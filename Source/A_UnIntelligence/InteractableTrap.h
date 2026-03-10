@@ -103,6 +103,11 @@ private:
     FTimerHandle FallFinishedTimer;
     FTimerHandle RespawnDelayTimer;
 
+    FVector AnchorTop;
+    FVector AnchorTopRight;
+    FVector AnchorTopLeft;
+    FVector TargetWidgetWorldLocation;
+    FVector DesiredAnchor;
 
     TWeakObjectPtr<AController> PendingController;
 
@@ -110,5 +115,9 @@ private:
     void UpdateFall();
     void FinishFall();
     void DoDelayedRespawn();
+    void CalculateTextAnchorPoints();
+    FVector PickViableTextAnchor(FVector Current, FVector CamLoc);
+
+
 
 };

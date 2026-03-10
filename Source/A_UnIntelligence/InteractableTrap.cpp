@@ -60,7 +60,8 @@ void AInteractableTrap::BeginPlay()
 {
     Super::BeginPlay();
     CalculateTopWorldCorners();
-
+    CalculateTextAnchorPoints();
+    
     SetHoverUIVisible(false);
 
     if (UUserWidget* W = NameWidget->GetUserWidgetObject())
@@ -123,7 +124,7 @@ void AInteractableTrap::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AAct
     Char->NearbyInteractables.Add(this);
 
     TextWidgetDefaultPos = NameWidget->GetComponentLocation();
-
+    DesiredAnchor = TextWidgetDefaultPos;
     OverlappingPawn = Cast<APawn>(OtherActor);
     if (OverlappingPawn.IsValid())
     {
@@ -153,7 +154,7 @@ void AInteractableTrap::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor
         OverlappingPawn.Reset();
         GetWorldTimerManager().ClearTimer(UIUpdateTimer);
         NameWidget->SetWorldLocation(TextWidgetDefaultPos);
-        UE_LOG(LogTemp, Warning, TEXT("TextWidgetDefaultPos=x:%f,y:%f,z:%f"), TextWidgetDefaultPos.X, TextWidgetDefaultPos.Y, TextWidgetDefaultPos.Z);
+        DesiredAnchor = TextWidgetDefaultPos;
         SetHoverUIVisible(false);
         
     }
@@ -237,6 +238,7 @@ void AInteractableTrap::UpdateHoverUI()
     APawn* P = OverlappingPawn.Get();
     if (!P)
     {
+        UE_LOG(LogTemp, Warning, TEXT("NO overlapping actor"));
         SetHoverUIVisible(false);
         return;
     }
@@ -256,6 +258,10 @@ void AInteractableTrap::UpdateHoverUI()
             NameWidget->SetWorldRotation((CamLoc - NameWidget->GetComponentLocation()).Rotation());
         }
     }
+    else
+    {
+        return;
+    }
     FVector Start = GetActorLocation(); 
     FVector End = NameWidget->GetComponentLocation();
 
@@ -264,8 +270,38 @@ void AInteractableTrap::UpdateHoverUI()
     FVector StartTrace = CamLoc;
     FVector EndTrace = NameWidget->GetComponentLocation();
     FCollisionQueryParams* CQP = new FCollisionQueryParams();
+    CQP->AddIgnoredActor(this);
 
-    if (GetWorld()->LineTraceSingleByChannel(*HitResult, StartTrace, EndTrace, ECC_Visibility, *CQP))
+    FVector DesiredVector = EndTrace;
+    if (GetWorld()->SweepSingleByChannel(*HitResult, StartTrace, EndTrace, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(15), *CQP))
+    {
+        DrawDebugSphere(GetWorld(), StartTrace, 15.f, 16, FColor::Green, false, 0.1f);
+        DrawDebugSphere(GetWorld(), EndTrace, 15.f, 16, FColor::Red, false, 0.1f);
+        DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor::Yellow, false, 0.1f);
+
+        AActor* Hit = HitResult->GetActor();
+        if (Hit)
+        {
+            if (Cast<ACharacterController>(Hit))
+            {
+                DesiredAnchor = PickViableTextAnchor(EndTrace, CamLoc);
+            }
+        }
+    }
+
+    FVector NewLocation = FMath::VInterpTo(
+        NameWidget->GetComponentLocation(),
+        DesiredAnchor,
+        0.05f,
+        6.f
+    );
+
+    NameWidget->SetWorldLocation(NewLocation);
+
+    NameWidget->SetWorldRotation((CamLoc - NewLocation).Rotation());
+
+
+   /* if (GetWorld()->LineTraceSingleByChannel(*HitResult, StartTrace, EndTrace, ECC_Visibility, *CQP))
     {
         DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(255, 0, 0), true);
         AActor* Hit;
@@ -277,9 +313,7 @@ void AInteractableTrap::UpdateHoverUI()
             }
             
         }
-    }
-    
-    NameWidget->SetWorldLocation(EndTrace);
+    }*/
 
     End.Z -= 5.f;
     FVector Direction = End - Start;
@@ -291,11 +325,47 @@ void AInteractableTrap::UpdateHoverUI()
     LeaderLine->SetWorldRotation(Rot);
 
     float MeshHeight = 100.f;
-    LeaderLine->SetWorldScale3D(FVector(0.02f, 0.02f, Length / MeshHeight));
-
-
-   
+    LeaderLine->SetWorldScale3D(FVector(0.02f, 0.02f, Length / MeshHeight)); 
 }
+
+FVector AInteractableTrap::PickViableTextAnchor(FVector Current, FVector CamLoc)
+{
+    float Best = FLT_MAX;
+    FVector BestVec = FVector::ZeroVector;
+    for (int i = 0; i < 3; i++)
+    {
+        float dist = FVector::DistSquared(TopWorldCorners[i], CamLoc);
+        UE_LOG(LogTemp, Warning, TEXT("Vec dist sqr=%f"), dist);
+        if (dist < Best)
+        {
+            if (BestVec != Current)
+            {
+                Best = dist;
+                BestVec = TopWorldCorners[i];
+            }
+        }
+    }
+    return BestVec;
+}
+
+void AInteractableTrap::CalculateTextAnchorPoints()
+{
+    FVector BoundsOrigin;
+    FVector BoundsExtent;
+    Mesh->GetOwner()->GetActorBounds(false, BoundsOrigin, BoundsExtent);
+
+    float SideOffset = BoundsExtent.Y + 20.f;
+    float HeightOffset = BoundsExtent.Z + 35.f;
+
+    FVector Top = FVector(0.f, 0.f, HeightOffset);
+    FVector TopLeft = FVector(0.f, -SideOffset * 0.7f, HeightOffset);
+    FVector TopRight = FVector(0.f, SideOffset * 0.7f, HeightOffset);
+
+    AnchorTop = GetActorTransform().TransformPosition(Top);
+    AnchorTopLeft = GetActorTransform().TransformPosition(TopLeft);
+    AnchorTopRight = GetActorTransform().TransformPosition(TopRight);
+}
+
 
 void AInteractableTrap::BeginFallOver(AController* ControllerToRespawn)
 {
