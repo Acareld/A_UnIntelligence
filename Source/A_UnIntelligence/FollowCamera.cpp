@@ -66,7 +66,7 @@ void AFollowCamera::Tick(float DeltaTime)
 		DesiredRot.Yaw = FMath::Clamp(DesiredRot.Yaw, ClampLeft, ClampRight);
 
 		const FRotator Current = GetActorRotation();
-		const FRotator SmoothedRot = FMath::RInterpTo(Current, DesiredRot, DeltaTime, ZoomInterpSpeed);
+		const FRotator SmoothedRot = FMath::RInterpTo(Current, DesiredRot, DeltaTime, InterpSpeed);
 		SetActorRotation(SmoothedRot);
 	}
 

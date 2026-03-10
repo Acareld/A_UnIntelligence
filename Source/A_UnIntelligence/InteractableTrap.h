@@ -97,6 +97,8 @@ private:
     FRotator FallTargetRot;
     bool bDidSnap = false;
 
+    FVector TextWidgetDefaultPos;
+
     FTimerHandle FallTickTimer;
     FTimerHandle FallFinishedTimer;
     FTimerHandle RespawnDelayTimer;

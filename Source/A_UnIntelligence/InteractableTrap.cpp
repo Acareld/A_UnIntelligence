@@ -39,6 +39,7 @@ AInteractableTrap::AInteractableTrap()
     NameWidget->SetTwoSided(true);
 
     NameWidget->SetRelativeLocation(FVector(0.f, -50.f, 80.f));
+    
     NameWidget->SetRelativeScale3D(FVector(40.f));
 
     LeaderLine = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("LeaderLine"));
@@ -121,6 +122,8 @@ void AInteractableTrap::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AAct
 
     Char->NearbyInteractables.Add(this);
 
+    TextWidgetDefaultPos = NameWidget->GetComponentLocation();
+
     OverlappingPawn = Cast<APawn>(OtherActor);
     if (OverlappingPawn.IsValid())
     {
@@ -149,7 +152,10 @@ void AInteractableTrap::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor
     {
         OverlappingPawn.Reset();
         GetWorldTimerManager().ClearTimer(UIUpdateTimer);
+        NameWidget->SetWorldLocation(TextWidgetDefaultPos);
+        UE_LOG(LogTemp, Warning, TEXT("TextWidgetDefaultPos=x:%f,y:%f,z:%f"), TextWidgetDefaultPos.X, TextWidgetDefaultPos.Y, TextWidgetDefaultPos.Z);
         SetHoverUIVisible(false);
+        
     }
 }
 
@@ -178,6 +184,7 @@ void AInteractableTrap::CalculateTopWorldCorners()
     {
         TopWorldCorners[i] = T.TransformPosition(TopLocalCorners[i]);
     }
+    TopWorldCorners[4] = GetActorLocation();
 }
 
 bool AInteractableTrap::IsInteractable(AActor* Other)
@@ -237,13 +244,13 @@ void AInteractableTrap::UpdateHoverUI()
     const bool bFacing = IsInteractable(P);
     SetHoverUIVisible(bFacing);
     
+    FVector CamLoc;
+    FRotator CamRot;
     if (bFacing && NameWidget)
     {
         APlayerController* PC = Cast<APlayerController>(P->GetController());
         if (PC)
         {
-            FVector CamLoc;
-            FRotator CamRot;
             PC->GetPlayerViewPoint(CamLoc, CamRot);
 
             NameWidget->SetWorldRotation((CamLoc - NameWidget->GetComponentLocation()).Rotation());
@@ -251,6 +258,29 @@ void AInteractableTrap::UpdateHoverUI()
     }
     FVector Start = GetActorLocation(); 
     FVector End = NameWidget->GetComponentLocation();
+
+
+    FHitResult* HitResult = new FHitResult();
+    FVector StartTrace = CamLoc;
+    FVector EndTrace = NameWidget->GetComponentLocation();
+    FCollisionQueryParams* CQP = new FCollisionQueryParams();
+
+    if (GetWorld()->LineTraceSingleByChannel(*HitResult, StartTrace, EndTrace, ECC_Visibility, *CQP))
+    {
+        DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(255, 0, 0), true);
+        AActor* Hit;
+        if ((Hit = HitResult->GetActor()) != NULL)
+        {
+            if (Cast<ACharacterController>(Hit))
+            {
+               EndTrace.X += 15;
+            }
+            
+        }
+    }
+    
+    NameWidget->SetWorldLocation(EndTrace);
+
     End.Z -= 5.f;
     FVector Direction = End - Start;
     float Length = Direction.Size();
@@ -262,7 +292,9 @@ void AInteractableTrap::UpdateHoverUI()
 
     float MeshHeight = 100.f;
     LeaderLine->SetWorldScale3D(FVector(0.02f, 0.02f, Length / MeshHeight));
-    
+
+
+   
 }
 
 void AInteractableTrap::BeginFallOver(AController* ControllerToRespawn)
