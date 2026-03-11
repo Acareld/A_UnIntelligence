@@ -30,6 +30,7 @@ class A_UNINTELLIGENCE_API AInteractableTrap : public AActor, public IInteractab
 public:
     AInteractableTrap();
     virtual void BeginPlay() override;
+    virtual void Tick(float DeltaTime) override;
     virtual EInteractionType GetInteractionType() const override;
 
     UPROPERTY(EditInstanceOnly, Category = "ItemType")
@@ -52,11 +53,19 @@ protected:
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
     TObjectPtr<UTrapDefinition> TrapDef;
 
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
+    float LeaderLineOffsetY;
+
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
+    float LeaderLineOffsetX;
+
     UPROPERTY(VisibleDefaultsOnly, Category = "UI")
     class UWidgetComponent* NameWidget;
 
     UPROPERTY(VisibleDefaultsOnly, Category = "UI")
-    class UStaticMeshComponent* LeaderLine;
+    class UStaticMeshComponent* LeaderLineDown;
+    UPROPERTY(VisibleDefaultsOnly, Category = "UI")
+    class UStaticMeshComponent* LeaderLineSide;
 
     TWeakObjectPtr<APawn> OverlappingPawn;
 
@@ -103,11 +112,17 @@ private:
     FTimerHandle FallFinishedTimer;
     FTimerHandle RespawnDelayTimer;
 
-    FVector AnchorTop;
-    FVector AnchorTopRight;
-    FVector AnchorTopLeft;
+    FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
     FVector DesiredAnchor;
+    TArray<FVector> Anchors;
+    int32 TargetAnchorIndex;
+    int32 CurrentAnchorIndex;
+    int32 DefaultAnchorIndex = 0;
+
+    bool bNeedTextSwitch = false;
+    bool bOverlap = false;
+    bool bIsSwitching = false;
 
     TWeakObjectPtr<AController> PendingController;
 
@@ -116,7 +131,7 @@ private:
     void FinishFall();
     void DoDelayedRespawn();
     void CalculateTextAnchorPoints();
-    FVector PickViableTextAnchor(FVector Current, FVector CamLoc);
+    int32 PickViableTextAnchor(int32 Current, FVector CamLoc);
 
 
 

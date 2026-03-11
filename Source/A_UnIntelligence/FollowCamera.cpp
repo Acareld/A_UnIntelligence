@@ -32,19 +32,22 @@ void AFollowCamera::Tick(float DeltaTime)
 
 	TargetActor = PlayerPawn;
 
-	const FVector CamLoc = GetActorLocation();
-	const FVector ActorLoc = TargetActor->GetActorLocation();
+	FVector CamLoc = GetActorLocation();
+	FVector ActorLoc = TargetActor->GetActorLocation();
 
-	const FVector DistanceVec = ActorLoc - CamLoc;
-	const float Distance = DistanceVec.Length();
-
+	// Calculate Desired Camera rotation
 	FRotator DesiredRot = UKismetMathLibrary::FindLookAtRotation(CamLoc, ActorLoc);
 
+	// Flatten cam and actor locations for homogenous distance
+	CamLoc.Z = 0.f;
+	ActorLoc.Z = 0.f;
+
+	const FVector DistanceVec = ActorLoc - CamLoc;
+	const float Distance = DistanceVec.SquaredLength();
+
+	// disable roll
 	DesiredRot.Roll = 0.0f;
 
-	
-
-	
 
 	if (InterpSpeed <= 0.f)
 	{
@@ -53,15 +56,26 @@ void AFollowCamera::Tick(float DeltaTime)
 	else
 	{
 		bool bShouldZoom = Distance > ZoomDistance;
+		bShouldZoom = false;	
 
-		float TargetFOV = bShouldZoom ? DesiredFOV : DefaultFOV;
+		const float Alpha = FMath::GetMappedRangeValueClamped(
+			FVector2D(FMath::Square(ZoomDistance), FMath::Square(750.f)),
+			FVector2D(0.f, 1.f),
+			Distance
+		);
+
+		const float TargetFOV = FMath::Lerp(90.f, 40.f, Alpha);
+
+		//const float FinalFOV = FMath::Clamp(TargetFOV, 60.f, 90.f);
 
 		const float CurrentFOV = CameraComponent->FieldOfView;
 		const float NewFOV = FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, ZoomInterpSpeed);
 
 		CameraComponent->SetFieldOfView(NewFOV);
 
-		DesiredRot.Pitch = bShouldZoom ? DesiredRot.Pitch : FMath::Clamp(DesiredRot.Pitch, -90.f, ClampUp);
+		//DesiredRot.Pitch = bShouldZoom ? DesiredRot.Pitch : FMath::Clamp(DesiredRot.Pitch, -90.f, ClampUp);
+		
+		
 
 		DesiredRot.Yaw = FMath::Clamp(DesiredRot.Yaw, ClampLeft, ClampRight);
 
