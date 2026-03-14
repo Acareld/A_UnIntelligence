@@ -10,6 +10,7 @@
 #include "GameplayTagContainer.h"
 #include "Components/WidgetComponent.h"
 #include "HoverTextWidget.h"
+#include "LevelSequencePlayer.h"
 
 #include "Components/CapsuleComponent.h"
 
@@ -29,8 +30,22 @@ AInteractableTrap::AInteractableTrap()
 	InteractionVolume->SetCollisionResponseToAllChannels(ECR_Ignore);
 	InteractionVolume->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 
-	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-	Mesh->SetupAttachment(RootSceneComponent);
+	/*Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+	Mesh->SetupAttachment(RootSceneComponent);*/
+
+	StaticMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
+	StaticMeshComp->SetupAttachment(RootSceneComponent);
+
+	SkeletalMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh"));
+	SkeletalMeshComp->SetupAttachment(RootSceneComponent);
+
+	StaticMeshComp->SetVisibility(true);
+	SkeletalMeshComp->SetVisibility(true);
+
+	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	ActiveMeshComp = StaticMeshComp;
 
 	NameWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("NameWidget"));
 	NameWidget->SetupAttachment(RootComponent);
@@ -69,9 +84,10 @@ AInteractableTrap::AInteractableTrap()
 void AInteractableTrap::BeginPlay()
 {
 	Super::BeginPlay();
+	RefreshActiveMesh();
 	CalculateTopWorldCorners();
 	CalculateTextAnchorPoints();
-
+	
 	SetHoverUIVisible(false);
 
 	CurrentAnchorIndex = DefaultAnchorIndex;
@@ -86,34 +102,112 @@ void AInteractableTrap::BeginPlay()
 	}
 }
 
+void AInteractableTrap::RefreshActiveMesh()
+{
+	ActiveMeshComp = nullptr;
+
+	const bool bHasStaticMesh =
+		StaticMeshComp && StaticMeshComp->GetStaticMesh();
+
+	const bool bHasSkeletalMesh =
+		SkeletalMeshComp && SkeletalMeshComp->GetSkeletalMeshAsset();
+
+	if (VisualType == ETrapVisualType::SkeletalMesh && bHasSkeletalMesh)
+	{
+		ActiveMeshComp = SkeletalMeshComp;
+
+		StaticMeshComp->SetVisibility(false);
+		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		SkeletalMeshComp->SetVisibility(true);
+		SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	else if (VisualType == ETrapVisualType::StaticMesh && bHasStaticMesh)
+	{
+		ActiveMeshComp = StaticMeshComp;
+
+		SkeletalMeshComp->SetVisibility(false);
+		SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		StaticMeshComp->SetVisibility(true);
+		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	else
+	{
+		StaticMeshComp->SetVisibility(false);
+		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		SkeletalMeshComp->SetVisibility(false);
+		SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
 void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 {
-	AController* C = InstigatorPawn->GetController();
-	if (!C) return;
-
+	AController* C = InstigatorPawn ? InstigatorPawn->GetController() : nullptr;
+	if (!C)
+	{
+		return;
+	}
 
 	if (!AcceptedItems.IsEmpty())
 	{
 		ACharacterController* Char = Cast<ACharacterController>(InstigatorPawn);
-		FGameplayTag Tag = Char->GetHeldItemTag();
+		if (!Char)
+		{
+			return;
+		}
+
+		const FGameplayTag Tag = Char->GetHeldItemTag();
 		if (!AcceptedItems.HasTagExact(Tag))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Trap needs Tag!"));
 			return;
 		}
-		else
-		{
-			Char->DeleteHeldItem();
-		}
+
+		Char->DeleteHeldItem();
 	}
 
-	AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this));
-	if (GM)
+	PlayTrapSequence();
+
+	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{
 		GM->RespawnPlayer(C);
 	}
+}
 
-	//BeginFallOver(C);
+void AInteractableTrap::PlayTrapSequence()
+{
+	if (!TrapDef)
+	{
+		return;
+	}
+
+	if (TrapDef->TrapSequence)
+	{
+		ALevelSequenceActor* SequenceActor;
+		FMovieSceneSequencePlaybackSettings PlayerSettings = FMovieSceneSequencePlaybackSettings();
+		PlayerSettings.FinishCompletionStateOverride = EMovieSceneCompletionModeOverride::ForceKeepState;
+		ULevelSequencePlayer* LevelSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(
+			GetWorld(),
+			TrapDef->TrapSequence,
+			PlayerSettings,
+			SequenceActor);
+
+		LevelSequencePlayer->Play();
+		return;
+	}
+
+	if (TrapDef->TrapMeshAnim)
+	{
+		if (USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(ActiveMeshComp))
+		{
+			SkelComp->PlayAnimation(TrapDef->TrapMeshAnim, false);
+			return;
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("TrapMeshAnim is set, but active mesh is not skeletal"));
+	}
 }
 
 bool AInteractableTrap::CanPickup(AActor* ByActor)
@@ -188,7 +282,20 @@ EInteractionType AInteractableTrap::GetInteractionType() const
 void AInteractableTrap::CalculateTopWorldCorners()
 {
 	FVector Min, Max;
-	Mesh->GetLocalBounds(Min, Max);
+	if (!GetActiveMeshLocalBounds(Min, Max))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to get LocalBounds"));
+		return;
+	}
+
+	const USceneComponent* BoundsSource = ActiveMeshComp
+		? Cast<USceneComponent>(ActiveMeshComp)
+		: Cast<USceneComponent>(InteractionVolume);
+
+	if (!BoundsSource)
+	{
+		return;
+	}
 
 	FVector TopLocalCorners[5] =
 	{
@@ -196,10 +303,10 @@ void AInteractableTrap::CalculateTopWorldCorners()
 		FVector(Max.X, Min.Y, Max.Z),
 		FVector(Min.X, Max.Y, Max.Z),
 		FVector(Min.X, Min.Y, Max.Z),
-		FVector(Max.X / 2, Max.Y / 2, Max.Z / 2)
+		FVector((Min.X + Max.X) * 0.5f, (Min.Y + Max.Y) * 0.5f, (Min.Z + Max.Z) * 0.5f)
 	};
 
-	FTransform T = Mesh->GetComponentTransform();
+	FTransform T = BoundsSource->GetComponentTransform();
 
 	for (int i = 0; i < 5; i++)
 	{
@@ -213,6 +320,17 @@ bool AInteractableTrap::IsInteractable(AActor* Other)
 	FVector TargetLoc = Other->GetActorLocation();
 	FVector Forward = Other->GetActorForwardVector();
 	Forward.Z = 0.f;
+	Forward = Forward.GetSafeNormal();
+
+	if (VisualType == ETrapVisualType::None)
+	{
+		FVector ActorToTrap = GetActorLocation() - TargetLoc;
+		ActorToTrap.Z = 0.f;
+		
+		float Dot = Forward.Dot(ActorToTrap.GetSafeNormal());
+		return Dot > -0.5f;
+	}
+
 
 	float BestDist = FLT_MAX;
 	float BestDot = -FLT_MAX;
@@ -262,7 +380,7 @@ void AInteractableTrap::UpdateHoverUI()
 	APawn* P = OverlappingPawn.Get();
 	if (!P)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("NO overlapping actor"));
+		UE_LOG(LogTemp, Warning, TEXT("No overlapping actor"));
 		SetHoverUIVisible(false);
 		return;
 	}
@@ -289,8 +407,16 @@ void AInteractableTrap::UpdateHoverUI()
 		return;
 	}
 	FVector Start = GetActorLocation();
-	FVector End = NameWidget->GetComponentLocation();
 
+	if (ActiveMeshComp)
+	{
+		Start = ActiveMeshComp->Bounds.Origin;
+	}
+	else if (InteractionVolume)
+	{
+		Start = InteractionVolume->Bounds.Origin;
+	}
+	FVector End = NameWidget->GetComponentLocation();
 
 	FHitResult HitResult;
 	FVector StartTrace = CamLoc;
@@ -298,14 +424,17 @@ void AInteractableTrap::UpdateHoverUI()
 	FCollisionQueryParams CQP;
 	CQP.AddIgnoredActor(this);
 
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_GameTraceChannel1);
+	DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor::Yellow, false, 0.1f);
 	FVector DesiredVector = EndTrace;
-	if (GetWorld()->SweepSingleByChannel(HitResult, StartTrace, EndTrace, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(15), CQP))
+	if (GetWorld()->SweepSingleByObjectType(HitResult, StartTrace, EndTrace, FQuat::Identity, ObjectParams, FCollisionShape::MakeSphere(15), CQP))
 	{
 		DrawDebugSphere(GetWorld(), StartTrace, 15.f, 16, FColor::Green, false, 0.1f);
 		DrawDebugSphere(GetWorld(), EndTrace, 15.f, 16, FColor::Red, false, 0.1f);
 		DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor::Yellow, false, 0.1f);
-
 		AActor* Hit = HitResult.GetActor();
+		
 		if (Hit && Cast<ACharacterController>(Hit) && !bIsSwitching)
 		{
 			TargetAnchorIndex = PickViableTextAnchor(CurrentAnchorIndex, CamLoc);
@@ -319,9 +448,8 @@ void AInteractableTrap::UpdateHoverUI()
 		}
 	}
 
-
-
 	End.Z -= 5.f;
+	End.Y += 5.f;
 	Start.X += LeaderLineOffsetX;
 	Start.Y += LeaderLineOffsetY;
 
@@ -336,7 +464,6 @@ void AInteractableTrap::UpdateHoverUI()
 
 	float MeshHeight = 100.f;
 	LeaderLineDown->SetWorldScale3D(FVector(0.02f, 0.02f, Length / MeshHeight));
-
 
 	FVector DirectionSide = End - Start;
 	DirectionSide.Z = 0.f;
@@ -375,18 +502,15 @@ int32 AInteractableTrap::PickViableTextAnchor(int32 Current, FVector CamLoc)
 
 void AInteractableTrap::CalculateTextAnchorPoints()
 {
-	FVector BoundsOrigin;
+	/*FVector BoundsOrigin;
 	FVector BoundsExtent;
 	Mesh->GetOwner()->GetActorBounds(false, BoundsOrigin, BoundsExtent);
 
 	float SideOffset = BoundsExtent.Y + 20.f;
 	float HeightOffset = BoundsExtent.Z + 35.f;
 
-	const FTransform T = GetActorTransform();
-
-	//Anchors.Add(T.TransformPosition(FVector(0.f, 0.f, HeightOffset)));                 
-	//Anchors.Add(T.TransformPosition(FVector(0.f, -SideOffset * 0.7f, HeightOffset)));  
-	//Anchors.Add(T.TransformPosition(FVector(0.f, SideOffset * 0.7f, HeightOffset)));
+	const FTransform T = GetActorTransform();*/
+	Anchors.Reset();
 
 	Anchors.Add(TopWorldCorners[0]);
 	Anchors.Add(TopWorldCorners[1]);
@@ -423,44 +547,7 @@ void AInteractableTrap::Tick(float DeltaTime)
 			}
 		}
 
-	/*	if (bNeedTextSwitch)
-		{
-			FVector CurrentTextPos = NameWidget->GetComponentLocation();
-			
-			if (CurrentTextPos.Equals(DesiredAnchor, 0.5f))
-			{
-				bNeedTextSwitch = false;
-				bIsSwitching = false;	
-			}
-
-			FVector CamLoc;
-			FRotator CamRot;
-			APawn* P = OverlappingPawn.Get();
-			APlayerController* PC = Cast<APlayerController>(P->GetController());
-			if (PC)
-			{
-				PC->GetPlayerViewPoint(CamLoc, CamRot);
-
-				//NameWidget->SetWorldRotation((CamLoc - NameWidget->GetComponentLocation()).Rotation());
-			}
-
-			if (!bIsSwitching)
-			{
-				DesiredAnchor = PickViableTextAnchor(LastViableAnchor, CamLoc);
-				LastViableAnchor = DesiredAnchor;
-				bIsSwitching = true;
-			}
-
-			FVector NewLocation = FMath::VInterpTo(
-				CurrentTextPos,
-				DesiredAnchor,
-				DeltaTime,
-				6.f
-			);
-			NameWidget->SetWorldLocation(NewLocation);
-
-			NameWidget->SetWorldRotation((CamLoc - NewLocation).Rotation());
-		}*/
+	
 	}
 }
 
@@ -482,7 +569,10 @@ void AInteractableTrap::BeginFallOver(AController* ControllerToRespawn)
 	FallStartRot = GetActorRotation();
 	FallTargetRot = FallStartRot + FallDelta;
 
-	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (ActiveMeshComp)
+	{
+		ActiveMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
 	InteractionVolume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);

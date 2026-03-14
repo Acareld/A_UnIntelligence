@@ -10,7 +10,7 @@ public class A_UnIntelligence : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "GameplayTags" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "UMG" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "UMG", "LevelSequence", "MovieScene" });
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

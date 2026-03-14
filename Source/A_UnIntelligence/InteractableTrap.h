@@ -6,19 +6,38 @@
 #include "GameFramework/Actor.h"
 #include "Interactable.h"
 #include "GameplayTagContainer.h"
+#include "LevelSequence.h"
+#include "Components/BoxComponent.h"
 #include "InteractableTrap.generated.h"
 
 class UStaticMeshComponent;
 class UBoxComponent;
+
+UENUM(BlueprintType)
+enum class ETrapVisualType : uint8
+{
+    StaticMesh,
+    SkeletalMesh,
+    None
+};
 
 UCLASS(BlueprintType)
 class UTrapDefinition : public UPrimaryDataAsset
 {
     GENERATED_BODY()
 public:
-    UPROPERTY(EditDefaultsOnly) FText DisplayName;
-    UPROPERTY(EditDefaultsOnly) TObjectPtr<UAnimMontage> InteractMontage;
-    UPROPERTY(EditDefaultsOnly) TObjectPtr<UAnimationAsset> TrapMeshAnim;
+    UPROPERTY(EditDefaultsOnly) 
+    FText DisplayName;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    TObjectPtr<UAnimMontage> InteractMontage = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    TObjectPtr<UAnimationAsset> TrapMeshAnim = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    TObjectPtr<ULevelSequence> TrapSequence = nullptr;
+    
     // add VFX/SFX/etc
 };
 
@@ -40,11 +59,24 @@ protected:
     UPROPERTY(VisibleAnywhere)
     USceneComponent* RootSceneComponent;
 
+    // DEPRECATED
     UPROPERTY(VisibleAnywhere)
     UStaticMeshComponent* Mesh;
 
     UPROPERTY(VisibleAnywhere)
-    UBoxComponent* InteractionVolume;
+    TObjectPtr<UStaticMeshComponent> StaticMeshComp;
+
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<USkeletalMeshComponent> SkeletalMeshComp;
+
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<UMeshComponent> ActiveMeshComp;
+
+    UPROPERTY(EditInstanceOnly, Category = "Trap")
+    ETrapVisualType VisualType = ETrapVisualType::StaticMesh;
+
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<UBoxComponent> InteractionVolume;
 
     FVector TopWorldCorners[5];
 
@@ -132,6 +164,49 @@ private:
     void DoDelayedRespawn();
     void CalculateTextAnchorPoints();
     int32 PickViableTextAnchor(int32 Current, FVector CamLoc);
+    void PlayTrapSequence();
+    void RefreshActiveMesh();
+    bool GetActiveMeshLocalBounds(FVector& OutMin, FVector& OutMax) const
+    {
+        
+        if (VisualType == ETrapVisualType::StaticMesh)
+        {
+            if (const UStaticMeshComponent* StaticComp = Cast<UStaticMeshComponent>(ActiveMeshComp))
+            {
+                StaticComp->GetLocalBounds(OutMin, OutMax);
+                UE_LOG(LogTemp, Warning, TEXT("static bounds"));
+                return true;
+            }
+            
+            UE_LOG(LogTemp, Warning, TEXT("static bounds FAILED"));
+        }
+
+        if (VisualType == ETrapVisualType::SkeletalMesh)
+        {
+            if (const USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(ActiveMeshComp)) {
+                const FBoxSphereBounds Bounds = SkelComp->GetLocalBounds();
+                const FBox Box = Bounds.GetBox();
+                UE_LOG(LogTemp, Warning, TEXT("skeletal bounds"));
+                OutMin = Box.Min;
+                OutMax = Box.Max;
+                return true;
+            }
+            UE_LOG(LogTemp, Warning, TEXT("skeletal bounds FAILED"));
+        }
+        if (VisualType == ETrapVisualType::None)
+        {
+            const FBoxSphereBounds Bounds = InteractionVolume->GetLocalBounds();
+            const FBox Box = Bounds.GetBox();
+            UE_LOG(LogTemp, Warning, TEXT("interactionvolume bounds"));
+            OutMin = Box.Min;
+            OutMax = Box.Max;
+            return true;
+        }
+
+        OutMin = FVector::ZeroVector;
+        OutMax = FVector::ZeroVector;
+        return false;
+    }
 
 
 
