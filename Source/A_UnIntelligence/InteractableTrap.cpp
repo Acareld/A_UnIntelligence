@@ -149,14 +149,14 @@ void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 	{
 		return;
 	}
+	ACharacterController* Char = Cast<ACharacterController>(InstigatorPawn);
+	if (!Char)
+	{
+		return;
+	}
 
 	if (!AcceptedItems.IsEmpty())
 	{
-		ACharacterController* Char = Cast<ACharacterController>(InstigatorPawn);
-		if (!Char)
-		{
-			return;
-		}
 
 		const FGameplayTag Tag = Char->GetHeldItemTag();
 		if (!AcceptedItems.HasTagExact(Tag))
@@ -168,15 +168,15 @@ void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 		Char->DeleteHeldItem();
 	}
 
-	PlayTrapSequence();
+	PlayTrapSequence(Char);
 
 	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{
-		GM->RespawnPlayer(C);
+		//GM->RespawnPlayer(C);
 	}
 }
 
-void AInteractableTrap::PlayTrapSequence()
+void AInteractableTrap::PlayTrapSequence(ACharacterController* Char)
 {
 	if (!TrapDef)
 	{
@@ -195,18 +195,22 @@ void AInteractableTrap::PlayTrapSequence()
 			SequenceActor);
 
 		LevelSequencePlayer->Play();
-		return;
 	}
-
-	if (TrapDef->TrapMeshAnim)
+	else if (TrapDef->TrapMeshAnim)
 	{
 		if (USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(ActiveMeshComp))
 		{
 			SkelComp->PlayAnimation(TrapDef->TrapMeshAnim, false);
+			
 			return;
 		}
 
 		UE_LOG(LogTemp, Warning, TEXT("TrapMeshAnim is set, but active mesh is not skeletal"));
+	}
+
+	if (TrapDef->PlayerAnim)
+	{
+		Char->PlayAnimation(TrapDef->PlayerAnim);
 	}
 }
 

@@ -423,6 +423,11 @@ void ACharacterController::Drop()
 	}
 }
 
+void ACharacterController::PlayAnimation(UAnimationAsset* Anim)
+{
+	GetMesh()->PlayAnimation(Anim, false);
+}
+
 
 void ACharacterController::Countdown()
 {

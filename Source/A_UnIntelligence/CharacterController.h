@@ -99,6 +99,8 @@ public:
 	FGameplayTag GetHeldItemTag() const;
 	void DeleteHeldItem();
 
+	void PlayAnimation(UAnimationAsset* Anim);
+
 	UPROPERTY()
 	TSet<TObjectPtr<AActor>> NearbyInteractables;
 

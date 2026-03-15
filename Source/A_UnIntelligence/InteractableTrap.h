@@ -7,6 +7,7 @@
 #include "Interactable.h"
 #include "GameplayTagContainer.h"
 #include "LevelSequence.h"
+#include "CharacterController.h"
 #include "Components/BoxComponent.h"
 #include "InteractableTrap.generated.h"
 
@@ -38,6 +39,9 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     TObjectPtr<ULevelSequence> TrapSequence = nullptr;
     
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    TObjectPtr<UAnimationAsset> PlayerAnim = nullptr;
+
     // add VFX/SFX/etc
 };
 
@@ -164,7 +168,7 @@ private:
     void DoDelayedRespawn();
     void CalculateTextAnchorPoints();
     int32 PickViableTextAnchor(int32 Current, FVector CamLoc);
-    void PlayTrapSequence();
+    void PlayTrapSequence(ACharacterController* Char);
     void RefreshActiveMesh();
     bool GetActiveMeshLocalBounds(FVector& OutMin, FVector& OutMax) const
     {
@@ -174,11 +178,8 @@ private:
             if (const UStaticMeshComponent* StaticComp = Cast<UStaticMeshComponent>(ActiveMeshComp))
             {
                 StaticComp->GetLocalBounds(OutMin, OutMax);
-                UE_LOG(LogTemp, Warning, TEXT("static bounds"));
                 return true;
-            }
-            
-            UE_LOG(LogTemp, Warning, TEXT("static bounds FAILED"));
+            }      
         }
 
         if (VisualType == ETrapVisualType::SkeletalMesh)
@@ -186,18 +187,15 @@ private:
             if (const USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(ActiveMeshComp)) {
                 const FBoxSphereBounds Bounds = SkelComp->GetLocalBounds();
                 const FBox Box = Bounds.GetBox();
-                UE_LOG(LogTemp, Warning, TEXT("skeletal bounds"));
                 OutMin = Box.Min;
                 OutMax = Box.Max;
                 return true;
             }
-            UE_LOG(LogTemp, Warning, TEXT("skeletal bounds FAILED"));
         }
         if (VisualType == ETrapVisualType::None)
         {
             const FBoxSphereBounds Bounds = InteractionVolume->GetLocalBounds();
             const FBox Box = Bounds.GetBox();
-            UE_LOG(LogTemp, Warning, TEXT("interactionvolume bounds"));
             OutMin = Box.Min;
             OutMax = Box.Max;
             return true;
