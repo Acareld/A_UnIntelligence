@@ -9,6 +9,7 @@
 #include "LevelSequence.h"
 #include "CharacterController.h"
 #include "Components/BoxComponent.h"
+#include "LevelSequencePlayer.h"
 #include "InteractableTrap.generated.h"
 
 class UStaticMeshComponent;
@@ -22,13 +23,43 @@ enum class ETrapVisualType : uint8
     None
 };
 
+UENUM(BlueprintType)
+enum class EAnimPlayOrder : uint8
+{
+    PlayerFirst,
+    TrapFirst,
+    Simultaneously
+};
+
+
+
 UCLASS(BlueprintType)
-class UTrapDefinition : public UPrimaryDataAsset
+class A_UNINTELLIGENCE_API UTrapDefinition : public UPrimaryDataAsset
 {
     GENERATED_BODY()
 public:
+
     UPROPERTY(EditDefaultsOnly) 
     FText DisplayName;
+
+    UPROPERTY(EditDefaultsOnly)
+    EAnimPlayOrder PlayOrder = EAnimPlayOrder::PlayerFirst;
+
+    // Only used with EAnimPlayOrder::PlayerFirst, percentage of first anim played before starting second
+    UPROPERTY(EditDefaultsOnly)
+    float DelayPercentage = 1.f;
+
+    UPROPERTY(EditDefaultsOnly)
+    bool ReverseAnimAfterDelay = false;
+
+    UPROPERTY(EditDefaultsOnly)
+    float ReverseDelayPercentage = 1.f;
+
+    UPROPERTY(EditDefaultsOnly)
+    bool AttachToSocket = false;
+
+    UPROPERTY(EditDefaultsOnly)
+    FName SocketName;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     FVector AnimationPosition;
@@ -36,6 +67,7 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     FRotator AnimationRotation;
 
+    // not used rn
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     TObjectPtr<UAnimMontage> InteractMontage = nullptr;
 
@@ -64,7 +96,8 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual EInteractionType GetInteractionType() const override;
 
-    UPROPERTY(EditInstanceOnly, Category = "ItemType")
+    // Deprecated
+    UPROPERTY(EditInstanceOnly, Category = "Trap")
     FGameplayTagContainer AcceptedItems;
 
 protected:
@@ -139,26 +172,11 @@ public:
     bool IsInteractable(AActor* Other);
 
 private:
-    UPROPERTY(EditAnywhere, Category = "Trap|Fall")
-    float FallDuration = 0.8f;
-
-    UPROPERTY(EditAnywhere, Category = "Trap|Fall")
-    FRotator FallDelta = FRotator(0.f, 0.f, 90.f); 
-
-    bool bIsFalling = false;
-    float FallElapsed = 0.f;
-    FRotator FallStartRot;
-    FRotator FallTargetRot;
-    bool bDidSnap = false;
-
     FVector TextWidgetDefaultPos;
 
-    
-    FTimerHandle FallTickTimer;
-    FTimerHandle FallFinishedTimer;
-    FTimerHandle RespawnDelayTimer;
-
     FTimerHandle AnimationDelayTimer;
+    FTimerHandle ReverseAnimTimer;
+    FTimerHandle DelayedRespawnTimer;
 
     FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
@@ -168,6 +186,11 @@ private:
     int32 CurrentAnchorIndex;
     int32 DefaultAnchorIndex = 0;
 
+    // AnimData
+    float MaxAnimLength = 0;
+    TObjectPtr<UAnimSequence> TrapMeshAnim = nullptr;
+    TObjectPtr<ULevelSequencePlayer> TrapSequencePlayer = nullptr;
+    TObjectPtr<UAnimSequence> PlayerAnim = nullptr;
 
     bool bNeedTextSwitch = false;
     bool bOverlap = false;
@@ -175,15 +198,14 @@ private:
 
     TWeakObjectPtr<AController> PendingController;
 
-    void BeginFallOver(AController* ControllerToRespawn);
-    void UpdateFall();
-    void FinishFall();
-    void DoDelayedRespawn();
     void CalculateTextAnchorPoints();
     int32 PickViableTextAnchor(int32 Current, FVector CamLoc);
-    void PlayTrapSequence(APawn* Pawn);
+    void PlayAnimations(APawn* Pawn);
     void RefreshActiveMesh();
-    void PlayTrapAnimationDelayed();
+    void PlayTrapAnimation(bool bReverse);
+    void CollectAnimData();
+
+    UFUNCTION()
     void DelayedRespawn();
     bool GetActiveMeshLocalBounds(FVector& OutMin, FVector& OutMax) const
     {

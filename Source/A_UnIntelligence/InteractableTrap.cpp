@@ -88,6 +88,7 @@ void AInteractableTrap::BeginPlay()
 	RefreshActiveMesh();
 	CalculateTopWorldCorners();
 	CalculateTextAnchorPoints();
+	CollectAnimData();
 	
 	SetHoverUIVisible(false);
 
@@ -174,10 +175,11 @@ void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 	Char->GetCharacterMovement()->DisableMovement();
 	InstigatorPawn->SetActorLocation(TrapDef->AnimationPosition);
 	InstigatorPawn->SetActorRotation(TrapDef->AnimationRotation, ETeleportType::ResetPhysics);
-	PlayTrapSequence(InstigatorPawn);
+
+	PlayAnimations(InstigatorPawn);
 }
 
-void AInteractableTrap::PlayTrapSequence(APawn* Pawn)
+void AInteractableTrap::PlayAnimations(APawn* Pawn)
 {
 
 	if (!TrapDef)
@@ -189,58 +191,85 @@ void AInteractableTrap::PlayTrapSequence(APawn* Pawn)
 	{
 		return;
 	}
-	if (TrapDef->PlayerAnim)
+
+	if (TrapDef->PlayOrder == EAnimPlayOrder::PlayerFirst)
 	{
-		UAnimSequence* AnimSequence = Cast<UAnimSequence>(TrapDef->PlayerAnim);
-		float Length = AnimSequence->GetPlayLength();
-
-		GetWorld()->GetTimerManager().SetTimer(
-			AnimationDelayTimer,
-			this,
-			&AInteractableTrap::PlayTrapAnimationDelayed,
-			Length + 0.1f,
-			false
-		);
-		Char->GetMesh()->PlayAnimation(TrapDef->PlayerAnim, false);
-
-	}
-
-	
-}
-
-void AInteractableTrap::PlayTrapAnimationDelayed()
-{
-	if (TrapDef->TrapSequence)
-	{
-		ALevelSequenceActor* SequenceActor;
-		FMovieSceneSequencePlaybackSettings PlayerSettings = FMovieSceneSequencePlaybackSettings();
-		PlayerSettings.FinishCompletionStateOverride = EMovieSceneCompletionModeOverride::ForceKeepState;
-		ULevelSequencePlayer* LevelSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(
-			GetWorld(),
-			TrapDef->TrapSequence,
-			PlayerSettings,
-			SequenceActor);
-
-		LevelSequencePlayer->OnFinished.AddDynamic(this, &AInteractableTrap::DelayedRespawn);
-		LevelSequencePlayer->Play();
-	}
-	else if (TrapDef->TrapMeshAnim)
-	{
-		if (USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(ActiveMeshComp))
+		if (PlayerAnim)
 		{
-
-			UAnimSequence* AnimSequence = Cast<UAnimSequence>(TrapDef->TrapMeshAnim);
-			float Length = AnimSequence->GetPlayLength();
+			float Length = PlayerAnim->GetPlayLength();
 
 			GetWorld()->GetTimerManager().SetTimer(
 				AnimationDelayTimer,
-				this,
-				&AInteractableTrap::DelayedRespawn,
-				Length,
+				[this]()
+				{
+					PlayTrapAnimation(false);
+				},
+				Length * TrapDef->DelayPercentage,
 				false
 			);
-			SkelComp->PlayAnimation(TrapDef->TrapMeshAnim, false);
+			if (TrapDef->ReverseAnimAfterDelay)
+			{
+				GetWorld()->GetTimerManager().SetTimer(
+					ReverseAnimTimer,
+					[this]()
+					{
+						PlayTrapAnimation(true);
+					},
+					Length * TrapDef->ReverseDelayPercentage,
+					false
+				);
+			}
 
+			Char->GetMesh()->PlayAnimation(PlayerAnim, false);
+		}
+	}
+	else if (TrapDef->PlayOrder == EAnimPlayOrder::TrapFirst)
+	{
+
+	}
+	else if (TrapDef->PlayOrder == EAnimPlayOrder::Simultaneously)
+	{
+		if (PlayerAnim)
+		{
+			float Length = PlayerAnim->GetPlayLength();
+
+			Char->GetMesh()->PlayAnimation(PlayerAnim, false);
+			PlayTrapAnimation(false);
+		}
+	}
+
+	GetWorld()->GetTimerManager().SetTimer(
+		DelayedRespawnTimer,
+		this,
+		&AInteractableTrap::DelayedRespawn,
+		MaxAnimLength,
+		false
+	);
+}
+
+void AInteractableTrap::PlayTrapAnimation(bool bReverse)
+{
+	if (TrapSequencePlayer)
+	{
+		if (bReverse)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Reverse triggered"));
+			TrapSequencePlayer->PlayReverse();
+		}
+		else
+		{
+			TrapSequencePlayer->Play();
+		}
+	}
+	else if (TrapMeshAnim)
+	{
+		if (USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(ActiveMeshComp))
+		{
+			if (TrapDef->AttachToSocket)
+			{
+				AnimInstigatorPawn->AttachToComponent(SkelComp, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TrapDef->SocketName);
+			}
+			SkelComp->PlayAnimation(TrapMeshAnim, false);
 			return;
 		}
 
@@ -572,6 +601,95 @@ void AInteractableTrap::CalculateTextAnchorPoints()
 	Anchors.Add(TopWorldCorners[2]);
 }
 
+void AInteractableTrap::CollectAnimData()
+{
+	if (!TrapDef)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No Trap Definition found!"));
+		return;
+	}
+
+	float Length = FLT_MIN;
+	float TrapAnimLength = FLT_MIN;
+
+	if (TrapDef->PlayerAnim)
+	{
+		PlayerAnim = Cast<UAnimSequence>(TrapDef->PlayerAnim);
+		Length = PlayerAnim->GetPlayLength();
+	}
+	if (TrapDef->TrapMeshAnim)
+	{
+		TrapMeshAnim = Cast<UAnimSequence>(TrapDef->TrapMeshAnim);
+		TrapAnimLength = TrapMeshAnim->GetPlayLength();
+			
+	}
+	else if (TrapDef->TrapSequence)
+	{
+		ALevelSequenceActor* SequenceActor;
+		FMovieSceneSequencePlaybackSettings PlayerSettings = FMovieSceneSequencePlaybackSettings();
+		PlayerSettings.FinishCompletionStateOverride = EMovieSceneCompletionModeOverride::ForceKeepState;
+
+		TrapSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(
+			GetWorld(),
+			TrapDef->TrapSequence,
+			PlayerSettings,
+			SequenceActor);
+
+		UMovieScene* MovieScene = TrapDef->TrapSequence->GetMovieScene();
+		if (!MovieScene)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Sequence contains no MovieScene"));
+			return;
+		}
+			
+		const FFrameRate FrameRate = MovieScene->GetTickResolution();
+		const TRange<FFrameNumber> Range = MovieScene->GetPlaybackRange();
+
+		const int32 StartFrame = Range.GetLowerBoundValue().Value;
+		const int32 EndFrame = Range.GetUpperBoundValue().Value;
+
+		const int32 FrameCount = EndFrame - StartFrame;
+
+		TrapAnimLength =  FrameCount / FrameRate.AsDecimal();
+		if (TrapDef->ReverseAnimAfterDelay)
+		{
+			TrapAnimLength *= 2;
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No Animation or Sequence for the trap found!"));
+		MaxAnimLength = Length;
+		return;
+	}
+
+
+	if (TrapDef->PlayOrder == EAnimPlayOrder::Simultaneously)
+	{
+		if (Length < TrapAnimLength)
+		{
+			Length = TrapAnimLength;
+		}
+	}
+	else if (TrapDef->PlayOrder == EAnimPlayOrder::PlayerFirst)
+	{
+		float TempLength = Length;
+		if (TrapDef->ReverseAnimAfterDelay)
+		{
+			TempLength += TrapAnimLength - (Length * (1 - TrapDef->ReverseDelayPercentage));
+		}
+		else
+		{
+			TempLength += TrapAnimLength - (Length * (1 - TrapDef->DelayPercentage));
+		}
+		if (Length < TrapAnimLength)
+		{
+			Length = TempLength;
+		}
+	}
+
+	MaxAnimLength = Length;
+}
 
 void AInteractableTrap::Tick(float DeltaTime)
 {
@@ -601,132 +719,6 @@ void AInteractableTrap::Tick(float DeltaTime)
 				bIsSwitching = false;
 			}
 		}
-
-	
 	}
-}
-
-
-
-
-void AInteractableTrap::BeginFallOver(AController* ControllerToRespawn)
-{
-	// Prevent spamming
-	if (bIsFalling)
-	{
-		return;
-	}
-
-	PendingController = ControllerToRespawn;
-
-	bIsFalling = true;
-	FallElapsed = 0.f;
-	FallStartRot = GetActorRotation();
-	FallTargetRot = FallStartRot + FallDelta;
-
-	if (ActiveMeshComp)
-	{
-		ActiveMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	}
-	InteractionVolume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
-	if (PC)
-	{
-		PC->SetIgnoreMoveInput(true);
-		PC->SetIgnoreLookInput(true);
-	}
-
-
-	GetWorldTimerManager().SetTimer(
-		FallTickTimer,
-		this,
-		&AInteractableTrap::UpdateFall,
-		1.0f / 60.0f,
-		true
-	);
-
-
-	GetWorldTimerManager().SetTimer(
-		FallFinishedTimer,
-		this,
-		&AInteractableTrap::FinishFall,
-		FallDuration,
-		false
-	);
-}
-
-void AInteractableTrap::UpdateFall()
-{
-	if (!bIsFalling)
-		return;
-
-	const float Step = GetWorldTimerManager().GetTimerRate(FallTickTimer);
-	FallElapsed += Step;
-
-	const float Alpha = FMath::Clamp(FallElapsed / FallDuration, 0.f, 1.f);
-	const float SmoothAlpha = FMath::InterpEaseIn(0.f, 1.f, Alpha, 3.0f);
-
-	const FRotator NewRot = FMath::Lerp(FallStartRot, FallTargetRot, SmoothAlpha);
-	SetActorRotation(NewRot);
-
-	if (Alpha >= 0.8 && !bDidSnap)
-	{
-		bDidSnap = true;
-		ACharacter* Char = UGameplayStatics::GetPlayerCharacter(this, 0);
-		FVector CurPos = Char->GetActorLocation();
-		const float HalfHeight = Char->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-		const float GroundZ = CurPos.Z - HalfHeight;
-		const float YHalfHeight = Char->GetMesh()->Bounds.BoxExtent.Y;
-		FVector Pos = FVector(CurPos.X, CurPos.Y, 10);
-		FRotator CurRot = Char->GetActorRotation();
-		CurRot.Pitch += 90.f;
-
-		Char->SetActorRotation(CurRot);
-		Char->SetActorLocation(Pos);
-	}
-
-	if (Alpha >= 1.f)
-	{
-		GetWorldTimerManager().ClearTimer(FallTickTimer);
-	}
-}
-
-void AInteractableTrap::FinishFall()
-{
-
-	GetWorldTimerManager().ClearTimer(FallTickTimer);
-	bIsFalling = false;
-	SetActorRotation(FallTargetRot);
-
-
-
-	GetWorldTimerManager().SetTimer(
-		RespawnDelayTimer,
-		this,
-		&AInteractableTrap::DoDelayedRespawn,
-		1.5f,
-		false
-	);
-
-}
-
-void AInteractableTrap::DoDelayedRespawn()
-{
-	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
-	{
-		PC->SetIgnoreMoveInput(false);
-		PC->SetIgnoreLookInput(false);
-	}
-
-	if (PendingController.IsValid())
-	{
-		if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
-		{
-			GM->RespawnPlayer(PendingController.Get());
-		}
-	}
-	Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	PendingController.Reset();
 }
 
