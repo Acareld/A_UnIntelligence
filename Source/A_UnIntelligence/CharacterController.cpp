@@ -171,9 +171,13 @@ void ACharacterController::Move(const FInputActionValue& Value)
 	{
 		MoveDir.Normalize();
 		FRotator rot = MoveDir.Rotation();
-		SetActorRotation(MoveDir.Rotation());
+		
 
 		// Move
+		if (GetCharacterMovement()->MovementMode != MOVE_None)
+		{
+			SetActorRotation(MoveDir.Rotation());
+		}
 		AddMovementInput(MoveDir, 0.5f);
 	}
 }
@@ -425,7 +429,9 @@ void ACharacterController::Drop()
 
 void ACharacterController::PlayAnimation(UAnimationAsset* Anim)
 {
-	GetMesh()->PlayAnimation(Anim, false);
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
 }
 
 

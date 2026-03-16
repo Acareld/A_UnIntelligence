@@ -31,6 +31,12 @@ public:
     FText DisplayName;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    FVector AnimationPosition;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    FRotator AnimationRotation;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     TObjectPtr<UAnimMontage> InteractMontage = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
@@ -41,6 +47,8 @@ public:
     
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     TObjectPtr<UAnimationAsset> PlayerAnim = nullptr;
+
+   
 
     // add VFX/SFX/etc
 };
@@ -104,6 +112,7 @@ protected:
     class UStaticMeshComponent* LeaderLineSide;
 
     TWeakObjectPtr<APawn> OverlappingPawn;
+    TWeakObjectPtr<APawn> AnimInstigatorPawn;
 
     FTimerHandle UIUpdateTimer;
 
@@ -144,9 +153,12 @@ private:
 
     FVector TextWidgetDefaultPos;
 
+    
     FTimerHandle FallTickTimer;
     FTimerHandle FallFinishedTimer;
     FTimerHandle RespawnDelayTimer;
+
+    FTimerHandle AnimationDelayTimer;
 
     FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
@@ -155,6 +167,7 @@ private:
     int32 TargetAnchorIndex;
     int32 CurrentAnchorIndex;
     int32 DefaultAnchorIndex = 0;
+
 
     bool bNeedTextSwitch = false;
     bool bOverlap = false;
@@ -168,8 +181,10 @@ private:
     void DoDelayedRespawn();
     void CalculateTextAnchorPoints();
     int32 PickViableTextAnchor(int32 Current, FVector CamLoc);
-    void PlayTrapSequence(ACharacterController* Char);
+    void PlayTrapSequence(APawn* Pawn);
     void RefreshActiveMesh();
+    void PlayTrapAnimationDelayed();
+    void DelayedRespawn();
     bool GetActiveMeshLocalBounds(FVector& OutMin, FVector& OutMax) const
     {
         

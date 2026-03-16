@@ -4,6 +4,7 @@
 #include "InteractableTrap.h"
 #include "CharacterController.h"
 #include "Components/BoxComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "InspectorGameModeBase.h"
@@ -144,6 +145,9 @@ void AInteractableTrap::RefreshActiveMesh()
 
 void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 {
+	AnimInstigatorPawn = OverlappingPawn;
+	InteractionVolume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	AController* C = InstigatorPawn ? InstigatorPawn->GetController() : nullptr;
 	if (!C)
 	{
@@ -167,22 +171,45 @@ void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 
 		Char->DeleteHeldItem();
 	}
-
-	PlayTrapSequence(Char);
-
-	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
-	{
-		//GM->RespawnPlayer(C);
-	}
+	Char->GetCharacterMovement()->DisableMovement();
+	InstigatorPawn->SetActorLocation(TrapDef->AnimationPosition);
+	InstigatorPawn->SetActorRotation(TrapDef->AnimationRotation, ETeleportType::ResetPhysics);
+	PlayTrapSequence(InstigatorPawn);
 }
 
-void AInteractableTrap::PlayTrapSequence(ACharacterController* Char)
+void AInteractableTrap::PlayTrapSequence(APawn* Pawn)
 {
+
 	if (!TrapDef)
 	{
 		return;
 	}
+	ACharacter* Char = Cast<ACharacter>(Pawn);
+	if (!Char)
+	{
+		return;
+	}
+	if (TrapDef->PlayerAnim)
+	{
+		UAnimSequence* AnimSequence = Cast<UAnimSequence>(TrapDef->PlayerAnim);
+		float Length = AnimSequence->GetPlayLength();
 
+		GetWorld()->GetTimerManager().SetTimer(
+			AnimationDelayTimer,
+			this,
+			&AInteractableTrap::PlayTrapAnimationDelayed,
+			Length + 0.1f,
+			false
+		);
+		Char->GetMesh()->PlayAnimation(TrapDef->PlayerAnim, false);
+
+	}
+
+	
+}
+
+void AInteractableTrap::PlayTrapAnimationDelayed()
+{
 	if (TrapDef->TrapSequence)
 	{
 		ALevelSequenceActor* SequenceActor;
@@ -194,23 +221,47 @@ void AInteractableTrap::PlayTrapSequence(ACharacterController* Char)
 			PlayerSettings,
 			SequenceActor);
 
+		LevelSequencePlayer->OnFinished.AddDynamic(this, &AInteractableTrap::DelayedRespawn);
 		LevelSequencePlayer->Play();
 	}
 	else if (TrapDef->TrapMeshAnim)
 	{
 		if (USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(ActiveMeshComp))
 		{
+
+			UAnimSequence* AnimSequence = Cast<UAnimSequence>(TrapDef->TrapMeshAnim);
+			float Length = AnimSequence->GetPlayLength();
+
+			GetWorld()->GetTimerManager().SetTimer(
+				AnimationDelayTimer,
+				this,
+				&AInteractableTrap::DelayedRespawn,
+				Length,
+				false
+			);
 			SkelComp->PlayAnimation(TrapDef->TrapMeshAnim, false);
-			
+
 			return;
 		}
 
 		UE_LOG(LogTemp, Warning, TEXT("TrapMeshAnim is set, but active mesh is not skeletal"));
 	}
+}
 
-	if (TrapDef->PlayerAnim)
+void AInteractableTrap::DelayedRespawn()
+{
+	AController* C = AnimInstigatorPawn.IsValid() ? AnimInstigatorPawn->GetController() : nullptr;
+	if (!C)
 	{
-		Char->PlayAnimation(TrapDef->PlayerAnim);
+		return;
+	}
+	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
+	{
+		
+		GM->RespawnPlayer(C);
+		
+		SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 }
 
