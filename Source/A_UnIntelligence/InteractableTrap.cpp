@@ -550,9 +550,9 @@ void AInteractableTrap::UpdateHoverUI()
 	FVector DesiredVector = EndTrace;
 	if (GetWorld()->SweepSingleByObjectType(HitResult, StartTrace, EndTrace, FQuat::Identity, ObjectParams, FCollisionShape::MakeSphere(15), CQP))
 	{
-		DrawDebugSphere(GetWorld(), StartTrace, 15.f, 16, FColor::Green, false, 0.1f);
-		DrawDebugSphere(GetWorld(), EndTrace, 15.f, 16, FColor::Red, false, 0.1f);
-		DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor::Yellow, false, 0.1f);
+		//DrawDebugSphere(GetWorld(), StartTrace, 15.f, 16, FColor::Green, false, 0.1f);
+		//DrawDebugSphere(GetWorld(), EndTrace, 15.f, 16, FColor::Red, false, 0.1f);
+		//DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor::Yellow, false, 0.1f);
 		AActor* Hit = HitResult.GetActor();
 		
 		if (Hit && Cast<ACharacterController>(Hit) && !bIsSwitching)

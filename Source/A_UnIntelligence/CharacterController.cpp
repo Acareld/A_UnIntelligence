@@ -25,7 +25,7 @@ ACharacterController::ACharacterController()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	GetMesh()->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -90.f), FQuat(FRotator(0.f, -90.f, 0.f)));
+	//GetMesh()->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -90.f), FQuat(FRotator(0.f, -90.f, 0.f)));
 
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 	bUseControllerRotationYaw = false;
@@ -175,11 +175,15 @@ void ACharacterController::Move(const FInputActionValue& Value)
 		
 
 		// Move
-		if (GetCharacterMovement()->MovementMode != MOVE_None)
+		if (!GetMesh()->GetAnimInstance()->IsAnyMontagePlaying())
 		{
-			SetActorRotation(MoveDir.Rotation());
+			if (GetCharacterMovement()->MovementMode != MOVE_None)
+			{
+				SetActorRotation(MoveDir.Rotation());
+			}
+			AddMovementInput(MoveDir, 0.5f);
 		}
-		AddMovementInput(MoveDir, 0.5f);
+		
 	}
 }
 
@@ -445,6 +449,10 @@ void ACharacterController::HandleRespawn()
 		//MoveComp->DisableMovement();
 		MoveComp->SetMovementMode(MOVE_Walking);
 	}
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		//Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
 
 	if (RespawnAnim)
 	{
@@ -452,14 +460,12 @@ void ACharacterController::HandleRespawn()
 		{
 			UAnimSequenceBase* AnimSequence = Cast<UAnimSequenceBase>(RespawnAnim);
 
-			UE_LOG(LogTemp, Warning, TEXT("RespawnAnim = %s"), *GetNameSafe(RespawnAnim));
-			UE_LOG(LogTemp, Warning, TEXT("AnimSequence = %s"), *GetNameSafe(AnimSequence));
 			float Length = AnimSequence->GetPlayLength();
 			AnimInstance->PlaySlotAnimationAsDynamicMontage(
 				AnimSequence,
 				FName("DefaultSlot"),
-				0.0f,
-				0.0f,
+				0.1f,
+				0.1f,
 				1.0f,
 				1
 			);
@@ -467,7 +473,6 @@ void ACharacterController::HandleRespawn()
 		}
 	}
 
-	// Optional: re-enable movement after animation duration
 	if (RespawnAnim)
 	{
 		const float Duration = RespawnAnim->GetPlayLength();
@@ -480,8 +485,12 @@ void ACharacterController::HandleRespawn()
 				if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 				{
 					MoveComp->SetMovementMode(MOVE_Walking);
+					if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+					{
+						Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+					}
 					
-					SetActorLocation(FVector(-52.76, -296.15, 92), false, nullptr, ETeleportType::ResetPhysics);
+					//SetActorLocation(FVector(-52.76, -296.15, 92), false, nullptr, ETeleportType::ResetPhysics);
 				}
 			},
 			Duration,
