@@ -76,10 +76,26 @@ void AFollowCamera::Tick(float DeltaTime)
 		//DesiredRot.Pitch = bShouldZoom ? DesiredRot.Pitch : FMath::Clamp(DesiredRot.Pitch, -90.f, ClampUp);
 		
 		
+		float CenterYaw = -90.f; 
 
-		DesiredRot.Yaw = FMath::Clamp(DesiredRot.Yaw, ClampLeft, ClampRight);
+		float DeltaYaw = FMath::FindDeltaAngleDegrees(CenterYaw, DesiredRot.Yaw);
 
+		
+		DeltaYaw = FMath::Clamp(DeltaYaw, ClampLeft, ClampRight);
+
+		
+		DesiredRot.Yaw = FRotator::NormalizeAxis(CenterYaw + DeltaYaw);
+
+		//DesiredRot.Yaw = FMath::Clamp(DesiredRot.Yaw, ClampLeft, ClampRight);
+		
 		const FRotator Current = GetActorRotation();
+
+		/*UE_LOG(LogTemp, Warning, TEXT("ActorYaw=%f DesiredYaw=%f CenterYaw=%f DeltaYaw=%f"),
+			GetActorRotation().Yaw,
+			DesiredRot.Yaw,
+			CenterYaw,
+			DeltaYaw);*/
+
 		const FRotator SmoothedRot = FMath::RInterpTo(Current, DesiredRot, DeltaTime, InterpSpeed);
 		SetActorRotation(SmoothedRot);
 	}

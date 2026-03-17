@@ -15,6 +15,7 @@
 #include "CameraRegionCollider.h"
 #include "PickupItem.h"
 #include "InteractableTrap.h"
+#include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
 
 
@@ -66,7 +67,7 @@ void ACharacterController::BeginPlay()
 
 		//PC->SetViewTarget(LevelCameras[CurrentCamIndex]);
 	}
-	RespawnTransform = GetActorTransform();
+	//RespawnTransform = GetActorTransform();
 
 	// countdown logic rn in BeginPlay, move to begin level at one point
 	//FTimerHandle TimerHandle;
@@ -432,6 +433,68 @@ void ACharacterController::PlayAnimation(UAnimationAsset* Anim)
 
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
+}
+
+void ACharacterController::HandleRespawn()
+{
+	SetActorTransform(RespawnTransform);
+
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		//MoveComp->StopMovementImmediately();
+		//MoveComp->DisableMovement();
+		MoveComp->SetMovementMode(MOVE_Walking);
+	}
+
+	if (RespawnAnim)
+	{
+		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+		{
+			UAnimSequenceBase* AnimSequence = Cast<UAnimSequenceBase>(RespawnAnim);
+
+			UE_LOG(LogTemp, Warning, TEXT("RespawnAnim = %s"), *GetNameSafe(RespawnAnim));
+			UE_LOG(LogTemp, Warning, TEXT("AnimSequence = %s"), *GetNameSafe(AnimSequence));
+			float Length = AnimSequence->GetPlayLength();
+			AnimInstance->PlaySlotAnimationAsDynamicMontage(
+				AnimSequence,
+				FName("DefaultSlot"),
+				0.0f,
+				0.0f,
+				1.0f,
+				1
+			);
+		
+		}
+	}
+
+	// Optional: re-enable movement after animation duration
+	if (RespawnAnim)
+	{
+		const float Duration = RespawnAnim->GetPlayLength();
+
+		FTimerHandle TimerHandle;
+		GetWorldTimerManager().SetTimer(
+			TimerHandle,
+			[this]()
+			{
+				if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+				{
+					MoveComp->SetMovementMode(MOVE_Walking);
+					
+					SetActorLocation(FVector(-52.76, -296.15, 92), false, nullptr, ETeleportType::ResetPhysics);
+				}
+			},
+			Duration,
+			false
+		);
+	}
+	else
+	{
+		if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+		{
+			MoveComp->SetMovementMode(MOVE_Walking);
+		}
+	}
 }
 
 

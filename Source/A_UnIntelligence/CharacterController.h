@@ -65,6 +65,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* DropAction;
 
+	UPROPERTY(EditAnywhere)
+	UAnimationAsset* RespawnAnim;
+
+	UPROPERTY(EditAnywhere)
+	FTransform RespawnTransform;
+
+
 	UPROPERTY(EditAnywhere, Category = "Region")
 	AActor* DefaultViewTarget;
 
@@ -100,6 +107,7 @@ public:
 	void DeleteHeldItem();
 
 	void PlayAnimation(UAnimationAsset* Anim);
+	void HandleRespawn();
 
 	UPROPERTY()
 	TSet<TObjectPtr<AActor>> NearbyInteractables;
@@ -111,7 +119,7 @@ private:
 
 	int32 CurrentCamIndex = 0;
 
-	FTransform RespawnTransform;
+	
 
 	
 

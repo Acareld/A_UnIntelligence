@@ -10,10 +10,13 @@
 #include "CharacterController.h"
 #include "Components/BoxComponent.h"
 #include "LevelSequencePlayer.h"
+
 #include "InteractableTrap.generated.h"
+
 
 class UStaticMeshComponent;
 class UBoxComponent;
+class UNiagaraSystem;
 
 UENUM(BlueprintType)
 enum class ETrapVisualType : uint8
@@ -57,6 +60,12 @@ public:
 
     UPROPERTY(EditDefaultsOnly)
     bool AttachToSocket = false;
+
+    UPROPERTY(EditDefaultsOnly)
+    bool UseVFX = false;
+
+    UPROPERTY(EditDefaultsOnly)
+    UNiagaraSystem* EffectSystem = nullptr;
 
     UPROPERTY(EditDefaultsOnly)
     FName SocketName;
@@ -177,6 +186,7 @@ private:
     FTimerHandle AnimationDelayTimer;
     FTimerHandle ReverseAnimTimer;
     FTimerHandle DelayedRespawnTimer;
+    FTimerHandle VFXTimer;
 
     FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
@@ -204,6 +214,7 @@ private:
     void RefreshActiveMesh();
     void PlayTrapAnimation(bool bReverse);
     void CollectAnimData();
+    void FireVFX();
 
     UFUNCTION()
     void DelayedRespawn();

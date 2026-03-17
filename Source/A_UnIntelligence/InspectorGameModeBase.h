@@ -17,6 +17,7 @@ public:
 	void BeginPlay();
 	void RespawnPlayer(AController* Controller);
 	void Countdown();
+	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	FTimerHandle TimerHandle;
 

@@ -12,6 +12,9 @@
 #include "Components/WidgetComponent.h"
 #include "HoverTextWidget.h"
 #include "LevelSequencePlayer.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+
 
 #include "Components/CapsuleComponent.h"
 
@@ -238,13 +241,25 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 		}
 	}
 
+	// Current 2s respawndelay added to the default animation length
 	GetWorld()->GetTimerManager().SetTimer(
 		DelayedRespawnTimer,
 		this,
 		&AInteractableTrap::DelayedRespawn,
-		MaxAnimLength,
+		MaxAnimLength + 2.f,
 		false
 	);
+	if (TrapDef->UseVFX)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			VFXTimer,
+			this,
+			&AInteractableTrap::FireVFX,
+			MaxAnimLength,
+			false
+		);
+	}
+	
 }
 
 void AInteractableTrap::PlayTrapAnimation(bool bReverse)
@@ -275,6 +290,7 @@ void AInteractableTrap::PlayTrapAnimation(bool bReverse)
 
 		UE_LOG(LogTemp, Warning, TEXT("TrapMeshAnim is set, but active mesh is not skeletal"));
 	}
+	
 }
 
 void AInteractableTrap::DelayedRespawn()
@@ -291,6 +307,26 @@ void AInteractableTrap::DelayedRespawn()
 		
 		SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+void AInteractableTrap::FireVFX()
+{
+	if (TrapDef->EffectSystem)
+	{
+		UNiagaraComponent* NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAttached(
+			TrapDef->EffectSystem,
+			GetRootComponent(),
+			NAME_None, 
+			FVector(0.f), 
+			FRotator(0.f), 
+			EAttachLocation::Type::KeepRelativeOffset, 
+			true
+		);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No Effect to fire"));
 	}
 }
 

@@ -12,6 +12,9 @@ void AInspectorGameModeBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+	
+	
+
 	GetWorldTimerManager().SetTimer(TimerHandle, this, &AInspectorGameModeBase::Countdown, 1.f, true, 0.0f);
 }
 
@@ -58,6 +61,7 @@ void AInspectorGameModeBase::RespawnPlayer(AController* Controller)
 	{
 		NewPC->SetCurrentCamIndex(SavedCamIndex);
 		NewPC->SetCorrectViewTarget();
+		NewPC->HandleRespawn();
 	}
 
 	HazardsFound++;
@@ -80,5 +84,20 @@ void AInspectorGameModeBase::Countdown()
 			--Minutes;
 			Seconds = 59;
 		}
+	}
+}
+
+void AInspectorGameModeBase::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	if (!NewPlayer) return;
+
+	APawn* Pawn = NewPlayer->GetPawn();
+	if (!Pawn) return;
+
+	if (ACharacterController* Character = Cast<ACharacterController>(Pawn))
+	{
+		Character->HandleRespawn(); 
 	}
 }
