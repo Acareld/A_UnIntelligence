@@ -249,13 +249,14 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 		MaxAnimLength + 2.f,
 		false
 	);
+
 	if (TrapDef->UseVFX)
 	{
 		GetWorld()->GetTimerManager().SetTimer(
 			VFXTimer,
 			this,
 			&AInteractableTrap::FireVFX,
-			MaxAnimLength,
+			MaxAnimLength * TrapDef->EffectDelayPercentage,
 			false
 		);
 	}
@@ -318,11 +319,12 @@ void AInteractableTrap::FireVFX()
 			TrapDef->EffectSystem,
 			GetRootComponent(),
 			NAME_None, 
-			FVector(0.f), 
-			FRotator(0.f), 
+			TrapDef->EffectLocation, 
+			TrapDef->EffectRotation, 
 			EAttachLocation::Type::KeepRelativeOffset, 
 			true
 		);
+		NiagaraComp->SetVariableVec3(FName("SpawnAreaSize"), TrapDef->EffectBoxSize);
 	}
 	else
 	{
@@ -385,12 +387,9 @@ void AInteractableTrap::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor
 		DesiredAnchor = TextWidgetDefaultPos;
 		LastViableAnchor = DesiredAnchor;
 		SetHoverUIVisible(false);
-
 	}
 
 	bOverlap = false;
-	//bNeedTextSwitch = false;
-	//bIsSwitching = false;
 	CurrentAnchorIndex = DefaultAnchorIndex;
 }
 
@@ -718,7 +717,7 @@ void AInteractableTrap::CollectAnimData()
 		{
 			TempLength += TrapAnimLength - (Length * (1 - TrapDef->DelayPercentage));
 		}
-		if (Length < TrapAnimLength)
+		if (Length < TempLength)
 		{
 			Length = TempLength;
 		}

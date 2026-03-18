@@ -61,11 +61,27 @@ public:
     UPROPERTY(EditDefaultsOnly)
     bool AttachToSocket = false;
 
+    // ----------------------------
+    // VFX Settings
     UPROPERTY(EditDefaultsOnly)
     bool UseVFX = false;
 
     UPROPERTY(EditDefaultsOnly)
+    float EffectDelayPercentage = 1.f;
+
+    UPROPERTY(EditDefaultsOnly)
     UNiagaraSystem* EffectSystem = nullptr;
+
+    UPROPERTY(EditDefaultsOnly)
+    FVector EffectLocation = FVector(0.f, 0.f, 0.f);
+
+    UPROPERTY(EditDefaultsOnly)
+    FVector EffectBoxSize = FVector(0.f, 0.f, 0.f);
+
+    UPROPERTY(EditDefaultsOnly)
+    FRotator EffectRotation = FRotator(0.f, 0.f, 0.f);
+
+    // ------------------------------
 
     UPROPERTY(EditDefaultsOnly)
     FName SocketName;
