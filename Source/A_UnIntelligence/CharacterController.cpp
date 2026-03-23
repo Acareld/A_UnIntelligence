@@ -31,6 +31,13 @@ ACharacterController::ACharacterController()
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bIgnoreBaseRotation = true;
 
+	GetCharacterMovement()->MaxWalkSpeed = 150.f;
+	GetCharacterMovement()->MaxAcceleration = 300.f;
+	GetCharacterMovement()->BrakingDecelerationWalking = 75.f;
+	GetCharacterMovement()->bUseSeparateBrakingFriction = true;
+	GetCharacterMovement()->GroundFriction = 4.f;
+	GetCharacterMovement()->BrakingFriction = 0.01f;
+	GetCharacterMovement()->BrakingFrictionFactor = 1.0f;
 	bCamSwitch = false;
 }
 
@@ -181,7 +188,8 @@ void ACharacterController::Move(const FInputActionValue& Value)
 			{
 				SetActorRotation(MoveDir.Rotation());
 			}
-			AddMovementInput(MoveDir, 0.5f);
+			
+			AddMovementInput(MoveDir, 1.f);
 		}
 		
 	}

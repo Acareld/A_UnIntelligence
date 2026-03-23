@@ -61,7 +61,7 @@ void AInspectorGameModeBase::RespawnPlayer(AController* Controller)
 	{
 		NewPC->SetCurrentCamIndex(SavedCamIndex);
 		NewPC->SetCorrectViewTarget();
-		NewPC->HandleRespawn();
+		//NewPC->HandleRespawn();
 	}
 
 	HazardsFound++;
@@ -98,6 +98,6 @@ void AInspectorGameModeBase::PostLogin(APlayerController* NewPlayer)
 
 	if (ACharacterController* Character = Cast<ACharacterController>(Pawn))
 	{
-		Character->HandleRespawn(); 
+		//Character->HandleRespawn(); 
 	}
 }
