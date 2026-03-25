@@ -116,8 +116,11 @@ public:
 	TObjectPtr<AActor> CurrentInteractable;
 private:
 	bool bCamSwitch;
+	bool bShouldRotate = true;
 
 	int32 CurrentCamIndex = 0;
+
+	FRotator DesiredRotation;
 
 	
 

@@ -10,6 +10,7 @@
 #include "InspectorGameModeBase.h"
 #include "GameplayTagContainer.h"
 #include "Components/WidgetComponent.h"
+#include "Animation/SkeletalMeshActor.h"
 #include "HoverTextWidget.h"
 #include "LevelSequencePlayer.h"
 #include "NiagaraFunctionLibrary.h"
@@ -45,9 +46,6 @@ AInteractableTrap::AInteractableTrap()
 
 	StaticMeshComp->SetVisibility(true);
 	SkeletalMeshComp->SetVisibility(true);
-
-	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ActiveMeshComp = StaticMeshComp;
 
@@ -92,7 +90,7 @@ void AInteractableTrap::BeginPlay()
 	CalculateTopWorldCorners();
 	CalculateTextAnchorPoints();
 	CollectAnimData();
-	
+
 	SetHoverUIVisible(false);
 
 	CurrentAnchorIndex = DefaultAnchorIndex;
@@ -175,7 +173,12 @@ void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 
 		Char->DeleteHeldItem();
 	}
-	Char->GetCharacterMovement()->DisableMovement();
+	//Char->GetCharacterMovement()->DisableMovement();
+
+	DisableInput(Cast<APlayerController>(C));
+
+	//bMoveToInteraction = true;
+
 	InstigatorPawn->SetActorLocation(TrapDef->AnimationPosition);
 	InstigatorPawn->SetActorRotation(TrapDef->AnimationRotation, ETeleportType::ResetPhysics);
 
@@ -185,15 +188,21 @@ void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 void AInteractableTrap::PlayAnimations(APawn* Pawn)
 {
 
+	//Pawn->SetActorLocation(TrapDef->AnimationPosition);
+	//Pawn->SetActorRotation(TrapDef->AnimationRotation, ETeleportType::ResetPhysics);
+
 	if (!TrapDef)
 	{
 		return;
 	}
 	ACharacter* Char = Cast<ACharacter>(Pawn);
+
 	if (!Char)
 	{
 		return;
 	}
+
+	Char->GetCharacterMovement()->DisableMovement();
 
 	if (TrapDef->PlayOrder == EAnimPlayOrder::PlayerFirst)
 	{
@@ -241,15 +250,17 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 		}
 	}
 
-	// Current 2s respawndelay added to the default animation length
-	GetWorld()->GetTimerManager().SetTimer(
-		DelayedRespawnTimer,
-		this,
-		&AInteractableTrap::DelayedRespawn,
-		MaxAnimLength + 2.f,
-		false
-	);
-
+	if (TrapDef->IsTrap)
+	{
+		// Current 2s respawn delay added to the default animation length
+		GetWorld()->GetTimerManager().SetTimer(
+			DelayedRespawnTimer,
+			this,
+			&AInteractableTrap::DelayedRespawn,
+			MaxAnimLength + 2.f,
+			false
+		);
+	}
 	if (TrapDef->UseVFX)
 	{
 		GetWorld()->GetTimerManager().SetTimer(
@@ -260,7 +271,7 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 			false
 		);
 	}
-	
+
 }
 
 void AInteractableTrap::PlayTrapAnimation(bool bReverse)
@@ -291,8 +302,22 @@ void AInteractableTrap::PlayTrapAnimation(bool bReverse)
 
 		UE_LOG(LogTemp, Warning, TEXT("TrapMeshAnim is set, but active mesh is not skeletal"));
 	}
-	
+
+	if (TrapDef->OffsetDelayPercentage <= 1.f)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			AnimationDelayTimer,
+			[this]()
+			{
+				Offset();
+			},
+			MaxAnimLength * TrapDef->OffsetDelayPercentage,
+			false
+		);
+	}
+
 }
+
 
 void AInteractableTrap::DelayedRespawn()
 {
@@ -303,11 +328,24 @@ void AInteractableTrap::DelayedRespawn()
 	}
 	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{
+		if (ACharacter* SourceChar = Cast<ACharacter>(AnimInstigatorPawn))
+		{
+			USkeletalMeshComponent* SourceMesh = SourceChar->GetMesh();
+			FTransform SpawnTransform = SourceMesh->GetComponentTransform();
+			SpawnTransform.SetLocation(FVector(SpawnTransform.GetLocation().X, SpawnTransform.GetLocation().Y, SpawnTransform.GetLocation().Z + TrapDef->FinalPoseZOffset));
+
+			GM->RespawnPlayer(C);
+
+			SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+			SpawnFrozenPoseCopy(SourceMesh, SpawnTransform, PlayerAnim);
+		}
 		
-		GM->RespawnPlayer(C);
+
 		
-		SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		
 	}
 }
 
@@ -318,10 +356,10 @@ void AInteractableTrap::FireVFX()
 		UNiagaraComponent* NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAttached(
 			TrapDef->EffectSystem,
 			GetRootComponent(),
-			NAME_None, 
-			TrapDef->EffectLocation, 
-			TrapDef->EffectRotation, 
-			EAttachLocation::Type::KeepRelativeOffset, 
+			NAME_None,
+			TrapDef->EffectLocation,
+			TrapDef->EffectRotation,
+			EAttachLocation::Type::KeepRelativeOffset,
 			true
 		);
 		NiagaraComp->SetVariableVec3(FName("SpawnAreaSize"), TrapDef->EffectBoxSize);
@@ -331,6 +369,42 @@ void AInteractableTrap::FireVFX()
 		UE_LOG(LogTemp, Warning, TEXT("No Effect to fire"));
 	}
 }
+
+void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimSequence* PoseAnim)
+{
+	if (!SourceMesh || !PoseAnim) return;
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	
+
+	ASkeletalMeshActor* FrozenActor = World->SpawnActor<ASkeletalMeshActor>(
+		ASkeletalMeshActor::StaticClass(),
+		SpawnTransform
+	);
+
+	if (!FrozenActor) return;
+
+	USkeletalMeshComponent* NewMesh = FrozenActor->GetSkeletalMeshComponent();
+	
+
+	if (!NewMesh || !SourceMesh) return;
+
+	NewMesh->SetSkeletalMeshAsset(SourceMesh->GetSkeletalMeshAsset());
+	//NewMesh->SetRelativeTransform(SourceMesh->GetRelativeTransform());
+
+	NewMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	NewMesh->SetAnimation(PoseAnim);
+
+	const float EndTime = FMath::Max(0.f, PoseAnim->GetPlayLength() - 0.001f);
+	NewMesh->SetPosition(EndTime, false);
+	NewMesh->Stop();
+
+	NewMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	NewMesh->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_Yes;
+}
+
 
 bool AInteractableTrap::CanPickup(AActor* ByActor)
 {
@@ -445,7 +519,7 @@ bool AInteractableTrap::IsInteractable(AActor* Other)
 	{
 		FVector ActorToTrap = GetActorLocation() - TargetLoc;
 		ActorToTrap.Z = 0.f;
-		
+
 		float Dot = Forward.Dot(ActorToTrap.GetSafeNormal());
 		return Dot > -0.5f;
 	}
@@ -553,7 +627,7 @@ void AInteractableTrap::UpdateHoverUI()
 		//DrawDebugSphere(GetWorld(), EndTrace, 15.f, 16, FColor::Red, false, 0.1f);
 		//DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor::Yellow, false, 0.1f);
 		AActor* Hit = HitResult.GetActor();
-		
+
 		if (Hit && Cast<ACharacterController>(Hit) && !bIsSwitching)
 		{
 			TargetAnchorIndex = PickViableTextAnchor(CurrentAnchorIndex, CamLoc);
@@ -656,7 +730,7 @@ void AInteractableTrap::CollectAnimData()
 	{
 		TrapMeshAnim = Cast<UAnimSequence>(TrapDef->TrapMeshAnim);
 		TrapAnimLength = TrapMeshAnim->GetPlayLength();
-			
+
 	}
 	else if (TrapDef->TrapSequence)
 	{
@@ -676,7 +750,7 @@ void AInteractableTrap::CollectAnimData()
 			UE_LOG(LogTemp, Warning, TEXT("Sequence contains no MovieScene"));
 			return;
 		}
-			
+
 		const FFrameRate FrameRate = MovieScene->GetTickResolution();
 		const TRange<FFrameNumber> Range = MovieScene->GetPlaybackRange();
 
@@ -685,7 +759,7 @@ void AInteractableTrap::CollectAnimData()
 
 		const int32 FrameCount = EndFrame - StartFrame;
 
-		TrapAnimLength =  FrameCount / FrameRate.AsDecimal();
+		TrapAnimLength = FrameCount / FrameRate.AsDecimal();
 		if (TrapDef->ReverseAnimAfterDelay)
 		{
 			TrapAnimLength *= 2;
@@ -730,10 +804,38 @@ void AInteractableTrap::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (bMoveToInteraction)
+	{
+		FVector ToTarget = TrapDef->StartAnimationPosition - AnimInstigatorPawn->GetActorLocation();
+		ToTarget.Z = 0.f;
+
+		float Distance = ToTarget.Size();
+
+		ACharacter* C = Cast<ACharacter>(AnimInstigatorPawn);
+
+		if (Distance > 10.f)
+		{
+			ToTarget.Normalize();
+			C->AddMovementInput(ToTarget, 1.0f);
+			C->SetActorRotation(FMath::RInterpTo(C->GetActorRotation(), ToTarget.Rotation(), DeltaTime, 10.f));
+		}
+		else
+		{
+			bMoveToInteraction = false;
+			//C->GetCharacterMovement()->StopMovementImmediately();
+
+
+
+			PlayAnimations(AnimInstigatorPawn.Get());
+		};
+	}
+
+
+
 	if (bOverlap)
 	{
 		UpdateHoverUI();
-		
+
 		if (bNeedTextSwitch)
 		{
 			FVector CurrentTextPos = NameWidget->GetComponentLocation();

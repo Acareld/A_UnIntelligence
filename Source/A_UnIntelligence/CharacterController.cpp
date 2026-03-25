@@ -39,6 +39,8 @@ ACharacterController::ACharacterController()
 	GetCharacterMovement()->BrakingFriction = 0.01f;
 	GetCharacterMovement()->BrakingFrictionFactor = 1.0f;
 	bCamSwitch = false;
+
+	DesiredRotation = GetActorRotation();
 }
 
 // Called when the game starts or when spawned
@@ -105,6 +107,12 @@ void ACharacterController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (bShouldRotate)
+	{
+		FRotator Rotation = FMath::RInterpTo(GetActorRotation(), DesiredRotation, DeltaTime, 10.f);
+		SetActorRotation(Rotation);
+	}
+	
 }
 
 void ACharacterController::ApplyInputMapping()
@@ -186,7 +194,8 @@ void ACharacterController::Move(const FInputActionValue& Value)
 		{
 			if (GetCharacterMovement()->MovementMode != MOVE_None)
 			{
-				SetActorRotation(MoveDir.Rotation());
+				//SetActorRotation(MoveDir.Rotation());
+				DesiredRotation = MoveDir.Rotation();
 			}
 			
 			AddMovementInput(MoveDir, 1.f);
@@ -236,6 +245,7 @@ void ACharacterController::Interact()
 
 			if (Trap->IsInteractable(this)) 
 			{ 
+				bShouldRotate = false;
 				IInteractable::Execute_Interact(Target, this);
 			} 
 			else

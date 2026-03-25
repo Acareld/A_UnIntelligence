@@ -41,6 +41,8 @@ class A_UNINTELLIGENCE_API UTrapDefinition : public UPrimaryDataAsset
 {
     GENERATED_BODY()
 public:
+    UPROPERTY(EditDefaultsOnly)
+    bool IsTrap = true;
 
     UPROPERTY(EditDefaultsOnly) 
     FText DisplayName;
@@ -60,6 +62,9 @@ public:
 
     UPROPERTY(EditDefaultsOnly)
     bool AttachToSocket = false;
+
+    UPROPERTY(EditDefaultsOnly)
+    FName SocketName;
 
     // ----------------------------
     // VFX Settings
@@ -83,14 +88,25 @@ public:
 
     // ------------------------------
 
-    UPROPERTY(EditDefaultsOnly)
-    FName SocketName;
+    
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     FVector AnimationPosition;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     FRotator AnimationRotation;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    FVector StartAnimationPosition = AnimationPosition;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    float OffsetDelayPercentage = 1.5f;
+
+    UPROPERTY(EditDefaultsOnly)
+    FVector Offset = FVector(0.f, 0.f, 0.f);
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    float FinalPoseZOffset;
 
     // not used rn
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
@@ -203,6 +219,7 @@ private:
     FTimerHandle ReverseAnimTimer;
     FTimerHandle DelayedRespawnTimer;
     FTimerHandle VFXTimer;
+    FTimerHandle OffsetTimer;
 
     FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
@@ -221,6 +238,7 @@ private:
     bool bNeedTextSwitch = false;
     bool bOverlap = false;
     bool bIsSwitching = false;
+    bool bMoveToInteraction = false;
 
     TWeakObjectPtr<AController> PendingController;
 
@@ -229,8 +247,10 @@ private:
     void PlayAnimations(APawn* Pawn);
     void RefreshActiveMesh();
     void PlayTrapAnimation(bool bReverse);
+    void Offset();
     void CollectAnimData();
     void FireVFX();
+    void SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimSequence* PoseAnim);
 
     UFUNCTION()
     void DelayedRespawn();
