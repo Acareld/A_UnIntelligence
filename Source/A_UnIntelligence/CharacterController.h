@@ -109,6 +109,8 @@ public:
 	void PlayAnimation(UAnimationAsset* Anim);
 	void HandleRespawn();
 
+	bool bShouldRotate = true;
+
 	UPROPERTY()
 	TSet<TObjectPtr<AActor>> NearbyInteractables;
 
@@ -116,7 +118,7 @@ public:
 	TObjectPtr<AActor> CurrentInteractable;
 private:
 	bool bCamSwitch;
-	bool bShouldRotate = true;
+	
 
 	int32 CurrentCamIndex = 0;
 

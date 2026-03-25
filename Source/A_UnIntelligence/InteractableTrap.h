@@ -99,11 +99,6 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     FVector StartAnimationPosition = AnimationPosition;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    float OffsetDelayPercentage = 1.5f;
-
-    UPROPERTY(EditDefaultsOnly)
-    FVector Offset = FVector(0.f, 0.f, 0.f);
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     float FinalPoseZOffset;
@@ -149,10 +144,10 @@ protected:
     UPROPERTY(VisibleAnywhere)
     UStaticMeshComponent* Mesh;
 
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(VisibleAnywhere, Category = "Trap")
     TObjectPtr<UStaticMeshComponent> StaticMeshComp;
 
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(VisibleAnywhere, Category = "Trap")
     TObjectPtr<USkeletalMeshComponent> SkeletalMeshComp;
 
     UPROPERTY(VisibleAnywhere)
@@ -167,8 +162,7 @@ protected:
     FVector TopWorldCorners[5];
 
     
-
-    UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Trap")
     TObjectPtr<UTrapDefinition> TrapDef;
 
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
@@ -247,7 +241,6 @@ private:
     void PlayAnimations(APawn* Pawn);
     void RefreshActiveMesh();
     void PlayTrapAnimation(bool bReverse);
-    void Offset();
     void CollectAnimData();
     void FireVFX();
     void SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimSequence* PoseAnim);

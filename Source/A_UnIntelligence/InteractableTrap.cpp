@@ -250,17 +250,17 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 		}
 	}
 
-	if (TrapDef->IsTrap)
-	{
+	
 		// Current 2s respawn delay added to the default animation length
 		GetWorld()->GetTimerManager().SetTimer(
 			DelayedRespawnTimer,
 			this,
 			&AInteractableTrap::DelayedRespawn,
-			MaxAnimLength + 2.f,
+			MaxAnimLength + 1.f,
 			false
 		);
-	}
+	
+	
 	if (TrapDef->UseVFX)
 	{
 		GetWorld()->GetTimerManager().SetTimer(
@@ -303,29 +303,42 @@ void AInteractableTrap::PlayTrapAnimation(bool bReverse)
 		UE_LOG(LogTemp, Warning, TEXT("TrapMeshAnim is set, but active mesh is not skeletal"));
 	}
 
-	if (TrapDef->OffsetDelayPercentage <= 1.f)
-	{
-		GetWorld()->GetTimerManager().SetTimer(
-			AnimationDelayTimer,
-			[this]()
-			{
-				Offset();
-			},
-			MaxAnimLength * TrapDef->OffsetDelayPercentage,
-			false
-		);
-	}
-
 }
 
 
 void AInteractableTrap::DelayedRespawn()
 {
+	
+
 	AController* C = AnimInstigatorPawn.IsValid() ? AnimInstigatorPawn->GetController() : nullptr;
 	if (!C)
 	{
 		return;
 	}
+
+	if (!TrapDef->IsTrap)
+	{
+		if (ACharacter* Char = Cast<ACharacter>(AnimInstigatorPawn.Get()))
+		{
+			Char->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+			Char->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+
+			if (ACharacterController* CController = Cast<ACharacterController>(Char))
+			{
+				CController->bShouldRotate = true;
+			}
+
+			USkeletalMeshComponent* SkelMesh = Char->GetMesh();
+			if (SkelMesh)
+			{
+				SkelMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+				SkelMesh->SetAnimInstanceClass(Char->GetMesh()->GetAnimClass());
+			}
+		}
+
+		return;
+	}
+
 	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{
 		if (ACharacter* SourceChar = Cast<ACharacter>(AnimInstigatorPawn))
@@ -378,12 +391,11 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 	if (!World) return;
 
 	
-
-	ASkeletalMeshActor* FrozenActor = World->SpawnActor<ASkeletalMeshActor>(
+	ASkeletalMeshActor* FrozenActor = World->SpawnActorDeferred<ASkeletalMeshActor>(
 		ASkeletalMeshActor::StaticClass(),
 		SpawnTransform
 	);
-
+	
 	if (!FrozenActor) return;
 
 	USkeletalMeshComponent* NewMesh = FrozenActor->GetSkeletalMeshComponent();
@@ -401,8 +413,31 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 	NewMesh->SetPosition(EndTime, false);
 	NewMesh->Stop();
 
-	NewMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	NewMesh->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_Yes;
+	NewMesh->TickAnimation(0.f, false);
+	NewMesh->RefreshBoneTransforms();
+	NewMesh->UpdateComponentToWorld();
+	NewMesh->FinalizeBoneTransform();
+
+	FrozenActor->FinishSpawning(SpawnTransform);
+
+	const FBoxSphereBounds Bounds = NewMesh->CalcBounds(FTransform::Identity);
+
+	UBoxComponent* WalkBox = NewObject<UBoxComponent>(FrozenActor);
+	WalkBox->SetupAttachment(NewMesh);
+	WalkBox->RegisterComponent();
+
+	FVector Extent = Bounds.BoxExtent;
+	Extent.Z = FMath::Min(Extent.Z, 13.f);
+
+	WalkBox->SetRelativeLocation(Bounds.Origin);
+	WalkBox->SetRelativeRotation(FRotator::ZeroRotator);
+	WalkBox->SetBoxExtent(Extent);
+
+	WalkBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	WalkBox->SetCollisionProfileName(TEXT("BlockAll"));
+	WalkBox->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_Yes;
+
+	NewMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 
