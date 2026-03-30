@@ -346,6 +346,7 @@ void AInteractableTrap::DelayedRespawn()
 			}
 			// Unpause Timer
 			GM->ResumeTimer();
+			GM->NonHazardFound();
 		}
 		else
 		{
