@@ -187,6 +187,12 @@ void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 
 void AInteractableTrap::PlayAnimations(APawn* Pawn)
 {
+	// Pause Countdown Timer
+	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
+	{
+		GM->PauseTimer();
+	}
+
 
 	//Pawn->SetActorLocation(TrapDef->AnimationPosition);
 	//Pawn->SetActorRotation(TrapDef->AnimationRotation, ETeleportType::ResetPhysics);
@@ -250,17 +256,17 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 		}
 	}
 
-	
-		// Current 2s respawn delay added to the default animation length
-		GetWorld()->GetTimerManager().SetTimer(
-			DelayedRespawnTimer,
-			this,
-			&AInteractableTrap::DelayedRespawn,
-			MaxAnimLength + 1.f,
-			false
-		);
-	
-	
+
+	// Add Respawn delay for each trap
+	GetWorld()->GetTimerManager().SetTimer(
+		DelayedRespawnTimer,
+		this,
+		&AInteractableTrap::DelayedRespawn,
+		MaxAnimLength + TrapDef->RespawnDelay,
+		false
+	);
+
+
 	if (TrapDef->UseVFX)
 	{
 		GetWorld()->GetTimerManager().SetTimer(
@@ -308,7 +314,7 @@ void AInteractableTrap::PlayTrapAnimation(bool bReverse)
 
 void AInteractableTrap::DelayedRespawn()
 {
-	
+
 
 	AController* C = AnimInstigatorPawn.IsValid() ? AnimInstigatorPawn->GetController() : nullptr;
 	if (!C)
@@ -316,50 +322,50 @@ void AInteractableTrap::DelayedRespawn()
 		return;
 	}
 
-	if (!TrapDef->IsTrap)
-	{
-		if (ACharacter* Char = Cast<ACharacter>(AnimInstigatorPawn.Get()))
-		{
-			Char->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-			Char->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-
-			if (ACharacterController* CController = Cast<ACharacterController>(Char))
-			{
-				CController->bShouldRotate = true;
-			}
-
-			USkeletalMeshComponent* SkelMesh = Char->GetMesh();
-			if (SkelMesh)
-			{
-				SkelMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
-				SkelMesh->SetAnimInstanceClass(Char->GetMesh()->GetAnimClass());
-			}
-		}
-
-		return;
-	}
 
 	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{
-		if (ACharacter* SourceChar = Cast<ACharacter>(AnimInstigatorPawn))
+		if (!TrapDef->IsTrap)
 		{
-			USkeletalMeshComponent* SourceMesh = SourceChar->GetMesh();
-			FTransform SpawnTransform = SourceMesh->GetComponentTransform();
-			SpawnTransform.SetLocation(FVector(SpawnTransform.GetLocation().X, SpawnTransform.GetLocation().Y, SpawnTransform.GetLocation().Z + TrapDef->FinalPoseZOffset));
+			if (ACharacter* Char = Cast<ACharacter>(AnimInstigatorPawn.Get()))
+			{
+				Char->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+				Char->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
-			GM->RespawnPlayer(C);
+				if (ACharacterController* CController = Cast<ACharacterController>(Char))
+				{
+					CController->bShouldRotate = true;
+				}
 
-			SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-			SpawnFrozenPoseCopy(SourceMesh, SpawnTransform, PlayerAnim);
+				USkeletalMeshComponent* SkelMesh = Char->GetMesh();
+				if (SkelMesh)
+				{
+					SkelMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+					SkelMesh->SetAnimInstanceClass(Char->GetMesh()->GetAnimClass());
+				}
+			}
+			// Unpause Timer
+			GM->ResumeTimer();
 		}
-		
+		else
+		{
+			if (ACharacter* SourceChar = Cast<ACharacter>(AnimInstigatorPawn))
+			{
+				USkeletalMeshComponent* SourceMesh = SourceChar->GetMesh();
+				FTransform SpawnTransform = SourceMesh->GetComponentTransform();
+				SpawnTransform.SetLocation(FVector(SpawnTransform.GetLocation().X, SpawnTransform.GetLocation().Y, SpawnTransform.GetLocation().Z + TrapDef->FinalPoseZOffset));
 
-		
+				GM->RespawnPlayer(C);
+				GM->ResumeTimer();
 
-		
+				SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+				SpawnFrozenPoseCopy(SourceMesh, SpawnTransform, PlayerAnim);
+			}
+		}
 	}
+
 }
 
 void AInteractableTrap::FireVFX()
@@ -390,16 +396,16 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 	UWorld* World = GetWorld();
 	if (!World) return;
 
-	
+
 	ASkeletalMeshActor* FrozenActor = World->SpawnActorDeferred<ASkeletalMeshActor>(
 		ASkeletalMeshActor::StaticClass(),
 		SpawnTransform
 	);
-	
+
 	if (!FrozenActor) return;
 
 	USkeletalMeshComponent* NewMesh = FrozenActor->GetSkeletalMeshComponent();
-	
+
 
 	if (!NewMesh || !SourceMesh) return;
 

@@ -12,9 +12,6 @@ void AInspectorGameModeBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	
-	
-
 	GetWorldTimerManager().SetTimer(TimerHandle, this, &AInspectorGameModeBase::Countdown, 1.f, true, 0.0f);
 }
 
@@ -65,6 +62,8 @@ void AInspectorGameModeBase::RespawnPlayer(AController* Controller)
 	}
 
 	HazardsFound++;
+	
+	ResumeTimer();
 }
 
 void AInspectorGameModeBase::Countdown()
@@ -85,6 +84,16 @@ void AInspectorGameModeBase::Countdown()
 			Seconds = 59;
 		}
 	}
+}
+
+void AInspectorGameModeBase::PauseTimer()
+{
+	GetWorldTimerManager().PauseTimer(TimerHandle);
+}
+
+void AInspectorGameModeBase::ResumeTimer()
+{
+	GetWorldTimerManager().UnPauseTimer(TimerHandle);
 }
 
 void AInspectorGameModeBase::PostLogin(APlayerController* NewPlayer)

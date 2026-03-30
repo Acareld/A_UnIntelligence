@@ -50,6 +50,9 @@ public:
     UPROPERTY(EditDefaultsOnly)
     EAnimPlayOrder PlayOrder = EAnimPlayOrder::PlayerFirst;
 
+    UPROPERTY(EditDefaultsOnly)
+    float RespawnDelay = 0.f;
+
     // Only used with EAnimPlayOrder::PlayerFirst, percentage of first anim played before starting second
     UPROPERTY(EditDefaultsOnly)
     float DelayPercentage = 1.f;
