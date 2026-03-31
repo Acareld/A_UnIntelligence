@@ -100,6 +100,12 @@ public:
     FRotator AnimationRotation;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    FVector ContinuePosition;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    FRotator ContinueRotation;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     FVector StartAnimationPosition = AnimationPosition;
 
 
@@ -230,7 +236,7 @@ private:
     float MaxAnimLength = 0;
     TObjectPtr<UAnimSequence> TrapMeshAnim = nullptr;
     TObjectPtr<ULevelSequencePlayer> TrapSequencePlayer = nullptr;
-    TObjectPtr<UAnimSequence> PlayerAnim = nullptr;
+    TObjectPtr<UAnimationAsset> PlayerAnim = nullptr;
 
     bool bNeedTextSwitch = false;
     bool bOverlap = false;
@@ -246,7 +252,7 @@ private:
     void PlayTrapAnimation(bool bReverse);
     void CollectAnimData();
     void FireVFX();
-    void SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimSequence* PoseAnim);
+    void SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimationAsset* PoseAnim);
 
     UFUNCTION()
     void DelayedRespawn();

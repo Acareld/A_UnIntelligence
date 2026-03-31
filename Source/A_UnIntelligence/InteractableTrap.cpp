@@ -335,6 +335,7 @@ void AInteractableTrap::DelayedRespawn()
 				if (ACharacterController* CController = Cast<ACharacterController>(Char))
 				{
 					CController->bShouldRotate = true;
+					CController->SetRotation(TrapDef->ContinueRotation);
 				}
 
 				USkeletalMeshComponent* SkelMesh = Char->GetMesh();
@@ -343,10 +344,14 @@ void AInteractableTrap::DelayedRespawn()
 					SkelMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 					SkelMesh->SetAnimInstanceClass(Char->GetMesh()->GetAnimClass());
 				}
+
+
 			}
 			// Unpause Timer
 			GM->ResumeTimer();
 			GM->NonHazardFound();
+			AnimInstigatorPawn->SetActorRelativeLocation(TrapDef->ContinuePosition);
+			
 		}
 		else
 		{
@@ -390,7 +395,7 @@ void AInteractableTrap::FireVFX()
 	}
 }
 
-void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimSequence* PoseAnim)
+void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimationAsset* PoseAnim)
 {
 	if (!SourceMesh || !PoseAnim) return;
 
@@ -765,8 +770,9 @@ void AInteractableTrap::CollectAnimData()
 
 	if (TrapDef->PlayerAnim)
 	{
-		PlayerAnim = Cast<UAnimSequence>(TrapDef->PlayerAnim);
+		PlayerAnim = TrapDef->PlayerAnim;
 		Length = PlayerAnim->GetPlayLength();
+		
 	}
 	if (TrapDef->TrapMeshAnim)
 	{

@@ -114,6 +114,10 @@ void ACharacterController::Tick(float DeltaTime)
 	}
 	
 }
+void ACharacterController::SetRotation(FRotator Rotation)
+{
+	DesiredRotation = Rotation;
+}
 
 void ACharacterController::ApplyInputMapping()
 {

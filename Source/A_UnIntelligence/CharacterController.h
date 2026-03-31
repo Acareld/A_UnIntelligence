@@ -108,6 +108,7 @@ public:
 
 	void PlayAnimation(UAnimationAsset* Anim);
 	void HandleRespawn();
+	void SetRotation(FRotator Rotation);
 
 	bool bShouldRotate = true;
 
