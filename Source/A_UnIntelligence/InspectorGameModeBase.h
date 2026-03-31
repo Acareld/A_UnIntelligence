@@ -49,6 +49,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly)
 	int32 NonHazardsFound = 0;
 
+	UPROPERTY(EditAnywhere)
+	int32 MaxMinutes = 5;
+	UPROPERTY(EditAnywhere)
+	int32 MaxSeconds = 15;
+
 private:
 	int32 SavedCamIndex;
 
@@ -56,7 +61,6 @@ private:
 	int32 MaxNumHazards = 7;
 	int32 MaxNumNonHazards = 1;
 
-	int32 MaxMinutes = 5;
-	int32 MaxSeconds = 15;
+	
 };
 
