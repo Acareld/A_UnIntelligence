@@ -41,93 +41,127 @@ class A_UNINTELLIGENCE_API UTrapDefinition : public UPrimaryDataAsset
 {
     GENERATED_BODY()
 public:
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="General")
     bool IsTrap = true;
 
-    UPROPERTY(EditDefaultsOnly) 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "General")
     FText DisplayName;
 
-    UPROPERTY(EditDefaultsOnly)
+    // Animation
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
     EAnimPlayOrder PlayOrder = EAnimPlayOrder::PlayerFirst;
 
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+    TObjectPtr<UAnimationAsset> PlayerAnim = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+    TObjectPtr<UAnimationAsset> TrapMeshAnim = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+    TObjectPtr<ULevelSequence> TrapSequence = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Timing")
     float RespawnDelay = 0.f;
 
     // Only used with EAnimPlayOrder::PlayerFirst, percentage of first anim played before starting second
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Timing", meta = (ClampMin = "0.0", ClampMax = "1.0", EditCondition = "PlayOrder == EAnimPlayOrder::PlayerFirst", EditConditionHides))
     float DelayPercentage = 1.f;
 
-    UPROPERTY(EditDefaultsOnly)
-    bool ReverseAnimAfterDelay = false;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Timing")
+    bool bReverseAnimAfterDelay = false;
 
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Timing", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0",
+        EditCondition = "bReverseAnimAfterDelay", EditConditionHides))
     float ReverseDelayPercentage = 1.f;
 
-    UPROPERTY(EditDefaultsOnly)
-    bool AttachToSocket = false;
+    // Animation attach 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Animation|Attachment")
+    bool bAttachToSocket = false;
 
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Animation|Attachment",
+        meta = (EditCondition = "bAttachToSocket", EditConditionHides)
+    )
     FName SocketName;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Placement")
+    FVector AnimationPosition;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Placement")
+    FRotator AnimationRotation;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Placement")
+    FVector ContinuePosition;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Placement")
+    FRotator ContinueRotation;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Placement")
+    FVector StartAnimationPosition = AnimationPosition;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Placement")
+    float FinalPoseZOffset;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+    TObjectPtr<USoundBase> MetaSound = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+    float SoundDelay = 0.0f;
 
     // ----------------------------
     // VFX Settings
-    UPROPERTY(EditDefaultsOnly)
-    bool UseVFX = false;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Effects")
+    bool bUseVFX = false;
 
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Effects",
+        meta = (EditCondition = "bUseVFX", EditConditionHides)
+    )
+    TObjectPtr<UNiagaraSystem> EffectSystem = nullptr;
+    
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Effects|Timing",
+        meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0",
+            EditCondition = "bUseVFX", EditConditionHides)
+    )
     float EffectDelayPercentage = 1.f;
 
-    UPROPERTY(EditDefaultsOnly)
-    UNiagaraSystem* EffectSystem = nullptr;
-
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Effects|Placement",
+        meta = (EditCondition = "bUseVFX", EditConditionHides)
+    )
     FVector EffectLocation = FVector(0.f, 0.f, 0.f);
 
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Effects|Placement",
+        meta = (EditCondition = "bUseVFX", EditConditionHides)
+    )
     FVector EffectBoxSize = FVector(0.f, 0.f, 0.f);
 
-    UPROPERTY(EditDefaultsOnly)
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Effects|Placement",
+        meta = (EditCondition = "bUseVFX", EditConditionHides)
+    )
     FRotator EffectRotation = FRotator(0.f, 0.f, 0.f);
 
     // ------------------------------
 
-    
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    FVector AnimationPosition;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Activation")
+    bool bActivateAfterSequence = false;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    FRotator AnimationRotation;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    FVector ContinuePosition;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    FRotator ContinueRotation;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    FVector StartAnimationPosition = AnimationPosition;
-
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    float FinalPoseZOffset;
-
-    // not used rn
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    TObjectPtr<UAnimMontage> InteractMontage = nullptr;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    TObjectPtr<UAnimationAsset> TrapMeshAnim = nullptr;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    TObjectPtr<ULevelSequence> TrapSequence = nullptr;
-    
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-    TObjectPtr<UAnimationAsset> PlayerAnim = nullptr;
-
-   
-
-    // add VFX/SFX/etc
 };
 
 UCLASS()
@@ -173,6 +207,9 @@ protected:
     
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Trap")
     TObjectPtr<UTrapDefinition> TrapDef;
+
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Trap")
+    TObjectPtr<AActor> ActorToActivate = nullptr;
 
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
     float LeaderLineOffsetY;
@@ -223,6 +260,7 @@ private:
     FTimerHandle DelayedRespawnTimer;
     FTimerHandle VFXTimer;
     FTimerHandle OffsetTimer;
+    FTimerHandle SoundTimer;
 
     FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
@@ -252,7 +290,11 @@ private:
     void PlayTrapAnimation(bool bReverse);
     void CollectAnimData();
     void FireVFX();
+    void PlaySound();
     void SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimationAsset* PoseAnim);
+
+    UFUNCTION()
+    void ActivateOtherActor();
 
     UFUNCTION()
     void DelayedRespawn();

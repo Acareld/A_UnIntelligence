@@ -225,7 +225,7 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 				Length * TrapDef->DelayPercentage,
 				false
 			);
-			if (TrapDef->ReverseAnimAfterDelay)
+			if (TrapDef->bReverseAnimAfterDelay)
 			{
 				GetWorld()->GetTimerManager().SetTimer(
 					ReverseAnimTimer,
@@ -267,7 +267,7 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 	);
 
 
-	if (TrapDef->UseVFX)
+	if (TrapDef->bUseVFX)
 	{
 		GetWorld()->GetTimerManager().SetTimer(
 			VFXTimer,
@@ -278,6 +278,26 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 		);
 	}
 
+	if (TrapDef->MetaSound)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			SoundTimer,
+			this,
+			&AInteractableTrap::PlaySound,
+			MaxAnimLength * TrapDef->SoundDelay,
+			false
+		);
+	}
+
+}
+
+void AInteractableTrap::PlaySound()
+{
+	UAudioComponent* AudioComp = UGameplayStatics::SpawnSoundAtLocation(
+		this,
+		TrapDef->MetaSound,
+		GetActorLocation()
+	);
 }
 
 void AInteractableTrap::PlayTrapAnimation(bool bReverse)
@@ -298,7 +318,7 @@ void AInteractableTrap::PlayTrapAnimation(bool bReverse)
 	{
 		if (USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(ActiveMeshComp))
 		{
-			if (TrapDef->AttachToSocket)
+			if (TrapDef->bAttachToSocket)
 			{
 				AnimInstigatorPawn->AttachToComponent(SkelComp, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TrapDef->SocketName);
 			}
@@ -309,6 +329,28 @@ void AInteractableTrap::PlayTrapAnimation(bool bReverse)
 		UE_LOG(LogTemp, Warning, TEXT("TrapMeshAnim is set, but active mesh is not skeletal"));
 	}
 
+}
+
+void AInteractableTrap::ActivateOtherActor()
+{
+	if (ActorToActivate)
+	{
+		//ActorToActivate->SetActorHiddenInGame(false);
+		if (AInteractableTrap* TrapActor = Cast<AInteractableTrap>(ActorToActivate))
+		{
+			
+			TrapActor->InteractionVolume->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Failed To cast to AInteractableTrap"));
+		}
+		// Different Actors To Activate
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No InterationVolume to activate"));
+	}
 }
 
 
@@ -792,6 +834,11 @@ void AInteractableTrap::CollectAnimData()
 			PlayerSettings,
 			SequenceActor);
 
+		if (TrapDef->bActivateAfterSequence && TrapSequencePlayer)
+		{
+			TrapSequencePlayer->OnFinished.AddDynamic(this, &AInteractableTrap::ActivateOtherActor);
+		}
+
 		UMovieScene* MovieScene = TrapDef->TrapSequence->GetMovieScene();
 		if (!MovieScene)
 		{
@@ -808,7 +855,7 @@ void AInteractableTrap::CollectAnimData()
 		const int32 FrameCount = EndFrame - StartFrame;
 
 		TrapAnimLength = FrameCount / FrameRate.AsDecimal();
-		if (TrapDef->ReverseAnimAfterDelay)
+		if (TrapDef->bReverseAnimAfterDelay)
 		{
 			TrapAnimLength *= 2;
 		}
@@ -831,7 +878,7 @@ void AInteractableTrap::CollectAnimData()
 	else if (TrapDef->PlayOrder == EAnimPlayOrder::PlayerFirst)
 	{
 		float TempLength = Length;
-		if (TrapDef->ReverseAnimAfterDelay)
+		if (TrapDef->bReverseAnimAfterDelay)
 		{
 			TempLength += TrapAnimLength - (Length * (1 - TrapDef->ReverseDelayPercentage));
 		}
