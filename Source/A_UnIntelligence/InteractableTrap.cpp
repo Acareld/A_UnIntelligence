@@ -403,8 +403,13 @@ void AInteractableTrap::DelayedRespawn()
 				FTransform SpawnTransform = SourceMesh->GetComponentTransform();
 				SpawnTransform.SetLocation(FVector(SpawnTransform.GetLocation().X, SpawnTransform.GetLocation().Y, SpawnTransform.GetLocation().Z + TrapDef->FinalPoseZOffset));
 
-				GM->RespawnPlayer(C);
-				GM->ResumeTimer();
+				
+
+				if (!TrapDef->DisplayName.ToString().Equals(TEXT("fridge"), ESearchCase::IgnoreCase))
+				{
+					GM->RespawnPlayer(C);
+					GM->ResumeTimer();
+				}
 
 				SkeletalMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 				StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -452,46 +457,80 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 
 	if (!FrozenActor) return;
 
-	USkeletalMeshComponent* NewMesh = FrozenActor->GetSkeletalMeshComponent();
+	USkeletalMeshComponent* NewMesh = FrozenActor->GetSkeletalMeshComponent();;
 
 
-	if (!NewMesh || !SourceMesh) return;
+	if (!SourceMesh) return;
 
-	NewMesh->SetSkeletalMeshAsset(SourceMesh->GetSkeletalMeshAsset());
-	//NewMesh->SetRelativeTransform(SourceMesh->GetRelativeTransform());
+	bool bIsFridge = TrapDef->DisplayName.ToString().Equals(TEXT("fridge"), ESearchCase::IgnoreCase);
 
-	NewMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-	NewMesh->SetAnimation(PoseAnim);
+	// Special case for the fridge hazard, different animation + skeletal mesh
+	if (bIsFridge)
+	{
+		SpawnTransform.SetLocation(FVector(SpawnTransform.GetLocation().X, SpawnTransform.GetLocation().Y + 10, SpawnTransform.GetLocation().Z + 5));
+		FrozenActor->FinishSpawning(SpawnTransform);
+		SourceMesh->SetVisibility(false);
 
-	const float EndTime = FMath::Max(0.f, PoseAnim->GetPlayLength() - 0.001f);
-	NewMesh->SetPosition(EndTime, false);
-	NewMesh->Stop();
+		NewMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		NewMesh->SetSkeletalMeshAsset(FridgeSkeletalMesh);
+		NewMesh->SetAnimation(FridgeAnimationAsset);
+		NewMesh->PlayAnimation(FridgeAnimationAsset, false);
+		
+		GetWorld()->GetTimerManager().SetTimer(
+			FreezerTimer,
+			this,
+			&AInteractableTrap::RespawnAfterFreezer,
+			FridgeAnimationAsset->GetPlayLength(),
+			false
+		);
+		NewMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	else
+	{
+		NewMesh->SetSkeletalMeshAsset(SourceMesh->GetSkeletalMeshAsset());
+		NewMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		NewMesh->SetAnimation(PoseAnim);
+		
+		const float EndTime = FMath::Max(0.f, PoseAnim->GetPlayLength() - 0.001f);
+		NewMesh->SetPosition(EndTime, false);
+		NewMesh->Stop();
+		NewMesh->TickAnimation(0.f, false);
 
-	NewMesh->TickAnimation(0.f, false);
-	NewMesh->RefreshBoneTransforms();
-	NewMesh->UpdateComponentToWorld();
-	NewMesh->FinalizeBoneTransform();
+		FrozenActor->FinishSpawning(SpawnTransform);
 
-	FrozenActor->FinishSpawning(SpawnTransform);
+		const FBoxSphereBounds Bounds = NewMesh->CalcBounds(FTransform::Identity);
 
-	const FBoxSphereBounds Bounds = NewMesh->CalcBounds(FTransform::Identity);
+		UBoxComponent* WalkBox = NewObject<UBoxComponent>(FrozenActor);
+		WalkBox->SetupAttachment(NewMesh);
+		WalkBox->RegisterComponent();
 
-	UBoxComponent* WalkBox = NewObject<UBoxComponent>(FrozenActor);
-	WalkBox->SetupAttachment(NewMesh);
-	WalkBox->RegisterComponent();
+		FVector Extent = Bounds.BoxExtent;
+		Extent.Z = FMath::Min(Extent.Z, 13.f);
 
-	FVector Extent = Bounds.BoxExtent;
-	Extent.Z = FMath::Min(Extent.Z, 13.f);
+		WalkBox->SetRelativeLocation(Bounds.Origin);
+		WalkBox->SetRelativeRotation(FRotator::ZeroRotator);
+		WalkBox->SetBoxExtent(Extent);
 
-	WalkBox->SetRelativeLocation(Bounds.Origin);
-	WalkBox->SetRelativeRotation(FRotator::ZeroRotator);
-	WalkBox->SetBoxExtent(Extent);
+		WalkBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		WalkBox->SetCollisionProfileName(TEXT("BlockAll"));
+		WalkBox->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_Yes;
 
-	WalkBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	WalkBox->SetCollisionProfileName(TEXT("BlockAll"));
-	WalkBox->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_Yes;
+		NewMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
 
-	NewMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+void AInteractableTrap::RespawnAfterFreezer()
+{
+	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
+	{
+		AController* C = AnimInstigatorPawn.IsValid() ? AnimInstigatorPawn->GetController() : nullptr;
+		if (!C)
+		{
+			return;
+		}
+		GM->RespawnPlayer(C);
+		GM->ResumeTimer();
+	}
 }
 
 

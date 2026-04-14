@@ -20,6 +20,9 @@ void AInspectorGameModeBase::BeginPlay()
 
 void AInspectorGameModeBase::RespawnPlayer(AController* Controller)
 {
+	// Play respawn fade
+	OnRespawnFade();
+
 	if (!Controller) return;
 	APawn* CurrentPawn = Controller->GetPawn();
 

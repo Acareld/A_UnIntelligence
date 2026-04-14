@@ -27,6 +27,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnLevelEnded();
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnRespawnFade();
+
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	FTimerHandle TimerHandle;

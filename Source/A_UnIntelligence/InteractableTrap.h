@@ -225,6 +225,12 @@ protected:
     UPROPERTY(VisibleDefaultsOnly, Category = "UI")
     class UStaticMeshComponent* LeaderLineSide;
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Trap")
+    USkeletalMesh* FridgeSkeletalMesh;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Trap")
+    UAnimationAsset* FridgeAnimationAsset;
+
     TWeakObjectPtr<APawn> OverlappingPawn;
     TWeakObjectPtr<APawn> AnimInstigatorPawn;
 
@@ -261,6 +267,7 @@ private:
     FTimerHandle VFXTimer;
     FTimerHandle OffsetTimer;
     FTimerHandle SoundTimer;
+    FTimerHandle FreezerTimer;
 
     FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
@@ -292,6 +299,7 @@ private:
     void FireVFX();
     void PlaySound();
     void SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimationAsset* PoseAnim);
+    void RespawnAfterFreezer();
 
     UFUNCTION()
     void ActivateOtherActor();
