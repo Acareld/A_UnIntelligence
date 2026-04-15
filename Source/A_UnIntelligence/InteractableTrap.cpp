@@ -15,6 +15,7 @@
 #include "LevelSequencePlayer.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
+#include "Materials/MaterialParameterCollectionInstance.h"
 
 
 #include "Components/CapsuleComponent.h"
@@ -474,15 +475,28 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 		NewMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		NewMesh->SetSkeletalMeshAsset(FridgeSkeletalMesh);
 		NewMesh->SetAnimation(FridgeAnimationAsset);
-		NewMesh->PlayAnimation(FridgeAnimationAsset, false);
+		//NewMesh->PlayAnimation(FridgeAnimationAsset, false);
 		
+		bIceActive = true;
+
 		GetWorld()->GetTimerManager().SetTimer(
+			FreezerAnimTimer,
+			[this, NewMesh]()
+			{
+				PlayFreezerAnim(NewMesh);
+			},
+			IceDuration,
+			false
+		);
+
+
+		/*GetWorld()->GetTimerManager().SetTimer(
 			FreezerTimer,
 			this,
 			&AInteractableTrap::RespawnAfterFreezer,
 			FridgeAnimationAsset->GetPlayLength(),
 			false
-		);
+		);*/
 		NewMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 	else
@@ -519,6 +533,19 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 	}
 }
 
+void AInteractableTrap::PlayFreezerAnim(USkeletalMeshComponent* NewMesh)
+{
+	NewMesh->PlayAnimation(FridgeAnimationAsset, false);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		FreezerTimer,
+		this,
+		&AInteractableTrap::RespawnAfterFreezer,
+		FridgeAnimationAsset->GetPlayLength() - 3.f,
+		false
+	);
+}
+
 void AInteractableTrap::RespawnAfterFreezer()
 {
 	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
@@ -530,6 +557,11 @@ void AInteractableTrap::RespawnAfterFreezer()
 		}
 		GM->RespawnPlayer(C);
 		GM->ResumeTimer();
+
+		if (UMaterialParameterCollectionInstance* Instance = GetWorld()->GetParameterCollectionInstance(IceParameterCollection))
+		{
+			Instance->SetScalarParameterValue("MaskHeight", 0.0f);
+		}
 	}
 }
 
@@ -989,6 +1021,24 @@ void AInteractableTrap::Tick(float DeltaTime)
 				bNeedTextSwitch = false;
 				bIsSwitching = false;
 			}
+		}
+	}
+
+	if (bIceActive)
+	{
+		IceElapsedTime += DeltaTime;
+
+		const float Alpha = FMath::Clamp(IceElapsedTime / IceDuration, 0.0f, 1.0f);
+		const float CurrentValue = FMath::Lerp(IceStartValue, IceTargetValue, Alpha);
+
+		if (UMaterialParameterCollectionInstance* Instance = GetWorld()->GetParameterCollectionInstance(IceParameterCollection))
+		{
+			Instance->SetScalarParameterValue("MaskHeight", CurrentValue);
+		}
+
+		if (Alpha >= 1.0f)
+		{
+			bIceActive = false;
 		}
 	}
 }

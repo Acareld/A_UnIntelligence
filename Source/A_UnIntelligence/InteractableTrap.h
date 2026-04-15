@@ -228,6 +228,9 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Trap")
     USkeletalMesh* FridgeSkeletalMesh;
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Trap")
+    UMaterialParameterCollection* IceParameterCollection;
+
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Trap")
     UAnimationAsset* FridgeAnimationAsset;
 
@@ -268,6 +271,7 @@ private:
     FTimerHandle OffsetTimer;
     FTimerHandle SoundTimer;
     FTimerHandle FreezerTimer;
+    FTimerHandle FreezerAnimTimer;
 
     FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
@@ -276,6 +280,14 @@ private:
     int32 TargetAnchorIndex;
     int32 CurrentAnchorIndex;
     int32 DefaultAnchorIndex = 0;
+
+    // Freezer Ice
+    float IceStartValue = 0.f;
+    float IceTargetValue = 150.f;
+    float IceElapsedTime = 0.f;
+    float IceDuration = 1.5f;
+    bool bIceActive = false;
+
 
     // AnimData
     float MaxAnimLength = 0;
@@ -300,6 +312,7 @@ private:
     void PlaySound();
     void SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, FTransform SpawnTransform, UAnimationAsset* PoseAnim);
     void RespawnAfterFreezer();
+    void PlayFreezerAnim(USkeletalMeshComponent* NewMesh);
 
     UFUNCTION()
     void ActivateOtherActor();
