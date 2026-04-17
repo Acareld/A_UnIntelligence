@@ -541,7 +541,7 @@ void AInteractableTrap::PlayFreezerAnim(USkeletalMeshComponent* NewMesh)
 		FreezerTimer,
 		this,
 		&AInteractableTrap::RespawnAfterFreezer,
-		FridgeAnimationAsset->GetPlayLength() - 3.f,
+		FridgeAnimationAsset->GetPlayLength() - 4.5f,
 		false
 	);
 }
@@ -560,7 +560,7 @@ void AInteractableTrap::RespawnAfterFreezer()
 
 		if (UMaterialParameterCollectionInstance* Instance = GetWorld()->GetParameterCollectionInstance(IceParameterCollection))
 		{
-			Instance->SetScalarParameterValue("MaskHeight", 0.0f);
+			//Instance->SetScalarParameterValue("MaskHeight", 0.0f);
 		}
 	}
 }
