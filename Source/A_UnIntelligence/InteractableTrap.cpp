@@ -512,7 +512,7 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 
 		FrozenActor->FinishSpawning(SpawnTransform);
 
-		const FBoxSphereBounds Bounds = NewMesh->CalcBounds(FTransform::Identity);
+		/*const FBoxSphereBounds Bounds = NewMesh->CalcBounds(FTransform::Identity);
 
 		UBoxComponent* WalkBox = NewObject<UBoxComponent>(FrozenActor);
 		WalkBox->SetupAttachment(NewMesh);
@@ -527,7 +527,7 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 
 		WalkBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		WalkBox->SetCollisionProfileName(TEXT("BlockAll"));
-		WalkBox->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_Yes;
+		WalkBox->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_Yes;*/
 
 		NewMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
