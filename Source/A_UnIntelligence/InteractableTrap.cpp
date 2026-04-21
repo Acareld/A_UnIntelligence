@@ -319,6 +319,17 @@ void AInteractableTrap::PlayTrapAnimation(bool bReverse)
 	{
 		if (USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(ActiveMeshComp))
 		{
+			if (TrapDef->bActivateAfterSequence)
+			{
+				GetWorld()->GetTimerManager().SetTimer(
+					ActivateTimer,
+					this,
+					&AInteractableTrap::ActivateOtherActor,
+					TrapMeshAnim->GetPlayLength() + TrapDef->RespawnDelay,
+					false
+				);
+			}
+
 			if (TrapDef->bAttachToSocket)
 			{
 				AnimInstigatorPawn->AttachToComponent(SkelComp, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TrapDef->SocketName);

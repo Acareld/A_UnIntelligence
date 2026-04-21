@@ -272,6 +272,7 @@ private:
     FTimerHandle SoundTimer;
     FTimerHandle FreezerTimer;
     FTimerHandle FreezerAnimTimer;
+    FTimerHandle ActivateTimer;
 
     FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
