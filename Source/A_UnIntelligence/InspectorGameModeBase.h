@@ -61,8 +61,8 @@ private:
 	int32 SavedCamIndex;
 
 	// Settings
-	int32 MaxNumHazards = 9;
-	int32 MaxNumNonHazards = 3;
+	int32 MaxNumHazards = 10;
+	int32 MaxNumNonHazards = 5;
 
 	
 };
