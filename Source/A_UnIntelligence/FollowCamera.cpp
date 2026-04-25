@@ -55,9 +55,6 @@ void AFollowCamera::Tick(float DeltaTime)
 	}
 	else
 	{
-		bool bShouldZoom = Distance > ZoomDistance;
-		bShouldZoom = false;	
-
 		const float Alpha = FMath::GetMappedRangeValueClamped(
 			FVector2D(FMath::Square(ZoomDistance), FMath::Square(750.f)),
 			FVector2D(0.f, 1.f),
@@ -66,15 +63,10 @@ void AFollowCamera::Tick(float DeltaTime)
 
 		const float TargetFOV = FMath::Lerp(90.f, 40.f, Alpha);
 
-		//const float FinalFOV = FMath::Clamp(TargetFOV, 60.f, 90.f);
-
 		const float CurrentFOV = CameraComponent->FieldOfView;
 		const float NewFOV = FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, ZoomInterpSpeed);
 
 		CameraComponent->SetFieldOfView(NewFOV);
-
-		//DesiredRot.Pitch = bShouldZoom ? DesiredRot.Pitch : FMath::Clamp(DesiredRot.Pitch, -90.f, ClampUp);
-		
 		
 		float CenterYaw = -90.f; 
 
@@ -82,19 +74,9 @@ void AFollowCamera::Tick(float DeltaTime)
 
 		
 		DeltaYaw = FMath::Clamp(DeltaYaw, ClampLeft, ClampRight);
-
-		
 		DesiredRot.Yaw = FRotator::NormalizeAxis(CenterYaw + DeltaYaw);
-
-		//DesiredRot.Yaw = FMath::Clamp(DesiredRot.Yaw, ClampLeft, ClampRight);
 		
 		const FRotator Current = GetActorRotation();
-
-		/*UE_LOG(LogTemp, Warning, TEXT("ActorYaw=%f DesiredYaw=%f CenterYaw=%f DeltaYaw=%f"),
-			GetActorRotation().Yaw,
-			DesiredRot.Yaw,
-			CenterYaw,
-			DeltaYaw);*/
 
 		const FRotator SmoothedRot = FMath::RInterpTo(Current, DesiredRot, DeltaTime, InterpSpeed);
 		SetActorRotation(SmoothedRot);

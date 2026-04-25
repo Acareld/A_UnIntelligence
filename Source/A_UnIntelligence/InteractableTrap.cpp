@@ -313,6 +313,8 @@ void AInteractableTrap::PlayTrapAnimation(bool bReverse)
 		else
 		{
 			TrapSequencePlayer->Play();
+
+			
 		}
 	}
 	else if (TrapMeshAnim)
@@ -358,6 +360,10 @@ void AInteractableTrap::ActivateOtherActor()
 			UE_LOG(LogTemp, Warning, TEXT("Failed To cast to AInteractableTrap"));
 		}
 		// Different Actors To Activate
+		if (USkeletalMeshComponent* Shutters = ActorToActivate->FindComponentByClass<USkeletalMeshComponent>())
+		{
+			Shutters->PlayAnimation(ShuttersAnimation, false);
+		}
 	}
 	else
 	{

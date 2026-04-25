@@ -170,9 +170,6 @@ void ACharacterController::Move(const FInputActionValue& Value)
 	if (!PC) return;
 	AActor* CurrentViewTarget = PC->GetViewTarget();
 
-	//ACameraActor* CamActor = Cast<ACameraActor>(CurrentViewTarget);
-	//FRotator Rotator = UKismetMathLibrary::FindLookAtRotation(CurrentViewTarget->GetActorLocation(), GetActorLocation());
-
 	Forward = CurrentViewTarget->GetActorForwardVector();
 	Right = CurrentViewTarget->GetActorRightVector();
 
@@ -198,7 +195,6 @@ void ACharacterController::Move(const FInputActionValue& Value)
 		{
 			if (GetCharacterMovement()->MovementMode != MOVE_None)
 			{
-				//SetActorRotation(MoveDir.Rotation());
 				DesiredRotation = MoveDir.Rotation();
 			}
 			

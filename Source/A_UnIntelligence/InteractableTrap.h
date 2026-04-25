@@ -211,6 +211,9 @@ protected:
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Trap")
     TObjectPtr<AActor> ActorToActivate = nullptr;
 
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Trap")
+    TObjectPtr<UAnimationAsset> ShuttersAnimation = nullptr;
+
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
     float LeaderLineOffsetY;
 
