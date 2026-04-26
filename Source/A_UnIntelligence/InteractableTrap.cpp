@@ -904,6 +904,7 @@ void AInteractableTrap::CollectAnimData()
 		Length = PlayerAnim->GetPlayLength();
 		
 	}
+
 	if (TrapDef->TrapMeshAnim)
 	{
 		TrapMeshAnim = Cast<UAnimSequence>(TrapDef->TrapMeshAnim);
@@ -950,7 +951,7 @@ void AInteractableTrap::CollectAnimData()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No Animation or Sequence for the trap found!"));
+		UE_LOG(LogTemp, Warning, TEXT("No Animation or Sequence for the trap found! Actor: %s"), *TrapDef->DisplayName.ToString());
 		MaxAnimLength = Length;
 		return;
 	}
