@@ -35,7 +35,6 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	//void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	void Move(const FInputActionValue& Value);
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void PawnClientRestart() override;
@@ -84,10 +83,6 @@ protected:
 	UPROPERTY()
 	AActor* HeldItem = nullptr;
 
-	UPROPERTY(BlueprintReadOnly)
-	int Seconds = 15;
-	UPROPERTY(BlueprintReadOnly)
-	int Minutes = 5;
 
 public:
 	// Called every frame

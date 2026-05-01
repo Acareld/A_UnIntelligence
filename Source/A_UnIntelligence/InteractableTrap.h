@@ -183,10 +183,6 @@ protected:
     UPROPERTY(VisibleAnywhere)
     USceneComponent* RootSceneComponent;
 
-    // DEPRECATED
-    UPROPERTY(VisibleAnywhere)
-    UStaticMeshComponent* Mesh;
-
     UPROPERTY(VisibleAnywhere, Category = "Trap")
     TObjectPtr<UStaticMeshComponent> StaticMeshComp;
 

@@ -29,6 +29,7 @@ AInteractableTrap::AInteractableTrap()
 	RootSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootSceneComponent"));
 	SetRootComponent(RootSceneComponent);
 
+	// Setup Interaction Volume
 	InteractionVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractionVolume"));
 	InteractionVolume->SetupAttachment(RootSceneComponent);
 
@@ -36,9 +37,7 @@ AInteractableTrap::AInteractableTrap()
 	InteractionVolume->SetCollisionResponseToAllChannels(ECR_Ignore);
 	InteractionVolume->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 
-	/*Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-	Mesh->SetupAttachment(RootSceneComponent);*/
-
+	// Setup the two possible mesh types
 	StaticMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
 	StaticMeshComp->SetupAttachment(RootSceneComponent);
 
@@ -50,6 +49,7 @@ AInteractableTrap::AInteractableTrap()
 
 	ActiveMeshComp = StaticMeshComp;
 
+	// Setup the Interaction Hint Widget
 	NameWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("NameWidget"));
 	NameWidget->SetupAttachment(RootComponent);
 	NameWidget->SetWidgetSpace(EWidgetSpace::World);
@@ -60,6 +60,7 @@ AInteractableTrap::AInteractableTrap()
 
 	NameWidget->SetRelativeScale3D(FVector(40.f));
 
+	// Setup the two lines from the trap to the hint widget
 	LeaderLineDown = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("LeaderLineDown"));
 	LeaderLineDown->SetupAttachment(RootComponent);
 	LeaderLineDown->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -80,6 +81,7 @@ AInteractableTrap::AInteractableTrap()
 
 	LeaderLineSide->SetRelativeLocation(FVector(0.f, 0.f, 40.f));
 
+	// Bind Overlap functions
 	InteractionVolume->OnComponentBeginOverlap.AddDynamic(this, &AInteractableTrap::OnOverlapBegin);
 	InteractionVolume->OnComponentEndOverlap.AddDynamic(this, &AInteractableTrap::OnOverlapEnd);
 }
@@ -106,6 +108,12 @@ void AInteractableTrap::BeginPlay()
 	}
 }
 
+
+/*
+*  Sets the ActiveMesh Component based on which type is available and which setting was chosen on the instance of the trap
+*  Disables the other type
+*
+*/
 void AInteractableTrap::RefreshActiveMesh()
 {
 	ActiveMeshComp = nullptr;
@@ -151,39 +159,39 @@ void AInteractableTrap::Interact_Implementation(APawn* InstigatorPawn)
 	AnimInstigatorPawn = OverlappingPawn;
 	InteractionVolume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	AController* C = InstigatorPawn ? InstigatorPawn->GetController() : nullptr;
-	if (!C)
+	if (!InstigatorPawn)
 	{
 		return;
 	}
+
+	AController* Controller = InstigatorPawn->GetController();
 	ACharacterController* Char = Cast<ACharacterController>(InstigatorPawn);
-	if (!Char)
+
+	if (!Controller || !Char)
 	{
 		return;
 	}
 
 	if (!AcceptedItems.IsEmpty())
 	{
-
 		const FGameplayTag Tag = Char->GetHeldItemTag();
+
 		if (!AcceptedItems.HasTagExact(Tag))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Trap needs Tag!"));
+			UE_LOG(LogTemp, Warning, TEXT("Trap needs Item!"));
 			return;
 		}
 
 		Char->DeleteHeldItem();
 	}
-	//Char->GetCharacterMovement()->DisableMovement();
 
-	DisableInput(Cast<APlayerController>(C));
-
-	//bMoveToInteraction = true;
+	DisableInput(Cast<APlayerController>(Controller));
 
 	InstigatorPawn->SetActorLocation(TrapDef->AnimationPosition);
 	InstigatorPawn->SetActorRotation(TrapDef->AnimationRotation, ETeleportType::ResetPhysics);
 
 	PlayAnimations(InstigatorPawn);
+
 }
 
 void AInteractableTrap::PlayAnimations(APawn* Pawn)
@@ -192,15 +200,6 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 	if (AInspectorGameModeBase* GM = Cast<AInspectorGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{
 		GM->PauseTimer();
-	}
-
-
-	//Pawn->SetActorLocation(TrapDef->AnimationPosition);
-	//Pawn->SetActorRotation(TrapDef->AnimationRotation, ETeleportType::ResetPhysics);
-
-	if (!TrapDef)
-	{
-		return;
 	}
 	ACharacter* Char = Cast<ACharacter>(Pawn);
 
@@ -349,7 +348,7 @@ void AInteractableTrap::ActivateOtherActor()
 {
 	if (ActorToActivate)
 	{
-		//ActorToActivate->SetActorHiddenInGame(false);
+
 		if (AInteractableTrap* TrapActor = Cast<AInteractableTrap>(ActorToActivate))
 		{
 			
@@ -359,6 +358,7 @@ void AInteractableTrap::ActivateOtherActor()
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Failed To cast to AInteractableTrap"));
 		}
+
 		// Different Actors To Activate
 		if (USkeletalMeshComponent* Shutters = ActorToActivate->FindComponentByClass<USkeletalMeshComponent>())
 		{
@@ -367,7 +367,7 @@ void AInteractableTrap::ActivateOtherActor()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No InterationVolume to activate"));
+		UE_LOG(LogTemp, Warning, TEXT("No Actor to activate"));
 	}
 }
 
@@ -606,18 +606,6 @@ void AInteractableTrap::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AAct
 	DesiredAnchor = TextWidgetDefaultPos;
 	OverlappingPawn = Cast<APawn>(OtherActor);
 
-	/*if (OverlappingPawn.IsValid())
-	{
-		GetWorldTimerManager().SetTimer(
-			UIUpdateTimer,
-			this,
-			&AInteractableTrap::UpdateHoverUI,
-			0.05f,
-			true
-		);
-
-		UpdateHoverUI();
-	}*/
 	bOverlap = true;
 
 }
@@ -772,8 +760,6 @@ void AInteractableTrap::UpdateHoverUI()
 	}
 	else
 	{
-		//bNeedTextSwitch = false;
-		//bIsSwitching = false;
 		return;
 	}
 	FVector Start = GetActorLocation();
@@ -796,13 +782,10 @@ void AInteractableTrap::UpdateHoverUI()
 
 	FCollisionObjectQueryParams ObjectParams;
 	ObjectParams.AddObjectTypesToQuery(ECC_GameTraceChannel1);
-	DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor::Yellow, false, 0.1f);
+	
 	FVector DesiredVector = EndTrace;
 	if (GetWorld()->SweepSingleByObjectType(HitResult, StartTrace, EndTrace, FQuat::Identity, ObjectParams, FCollisionShape::MakeSphere(15), CQP))
 	{
-		//DrawDebugSphere(GetWorld(), StartTrace, 15.f, 16, FColor::Green, false, 0.1f);
-		//DrawDebugSphere(GetWorld(), EndTrace, 15.f, 16, FColor::Red, false, 0.1f);
-		//DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor::Yellow, false, 0.1f);
 		AActor* Hit = HitResult.GetActor();
 
 		if (Hit && Cast<ACharacterController>(Hit) && !bIsSwitching)
@@ -872,21 +855,17 @@ int32 AInteractableTrap::PickViableTextAnchor(int32 Current, FVector CamLoc)
 
 void AInteractableTrap::CalculateTextAnchorPoints()
 {
-	/*FVector BoundsOrigin;
-	FVector BoundsExtent;
-	Mesh->GetOwner()->GetActorBounds(false, BoundsOrigin, BoundsExtent);
-
-	float SideOffset = BoundsExtent.Y + 20.f;
-	float HeightOffset = BoundsExtent.Z + 35.f;
-
-	const FTransform T = GetActorTransform();*/
 	Anchors.Reset();
-
 	Anchors.Add(TopWorldCorners[0]);
 	Anchors.Add(TopWorldCorners[1]);
 	Anchors.Add(TopWorldCorners[2]);
 }
 
+
+/*
+*	Collect all necessary information for the animations to be played on interaction
+*	This includes the animation assets and play length
+*/
 void AInteractableTrap::CollectAnimData()
 {
 	if (!TrapDef)
@@ -988,6 +967,8 @@ void AInteractableTrap::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// Move the actor to the location of the animation
+	// Not used due to animation root displacement
 	if (bMoveToInteraction)
 	{
 		FVector ToTarget = TrapDef->StartAnimationPosition - AnimInstigatorPawn->GetActorLocation();
@@ -1006,16 +987,12 @@ void AInteractableTrap::Tick(float DeltaTime)
 		else
 		{
 			bMoveToInteraction = false;
-			//C->GetCharacterMovement()->StopMovementImmediately();
-
-
 
 			PlayAnimations(AnimInstigatorPawn.Get());
 		};
 	}
 
-
-
+	
 	if (bOverlap)
 	{
 		UpdateHoverUI();
@@ -1042,6 +1019,8 @@ void AInteractableTrap::Tick(float DeltaTime)
 		}
 	}
 
+
+	// special case for ice built up on the freezer hazard
 	if (bIceActive)
 	{
 		IceElapsedTime += DeltaTime;

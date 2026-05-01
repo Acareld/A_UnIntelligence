@@ -82,7 +82,4 @@ void AFollowCamera::Tick(float DeltaTime)
 		SetActorRotation(SmoothedRot);
 	}
 
-	
-
-
 }

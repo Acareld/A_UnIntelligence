@@ -70,17 +70,6 @@ void ACharacterController::BeginPlay()
 		}
 	}
 
-	// Set initial camera
-	if (LevelCameras.Num() > 0)
-	{
-
-		//PC->SetViewTarget(LevelCameras[CurrentCamIndex]);
-	}
-	//RespawnTransform = GetActorTransform();
-
-	// countdown logic rn in BeginPlay, move to begin level at one point
-	//FTimerHandle TimerHandle;
-	//GetWorldTimerManager().SetTimer(TimerHandle, this, &ACharacterController::Countdown, 1.f, true, 0.0f);
 
 }
 
@@ -155,9 +144,9 @@ void ACharacterController::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ACharacterController::Move);
-		EIC->BindAction(CamAction, ETriggerEvent::Triggered, this, &ACharacterController::CamSwitch);
+		//EIC->BindAction(CamAction, ETriggerEvent::Triggered, this, &ACharacterController::CamSwitch);
 		EIC->BindAction(InteractAction, ETriggerEvent::Started, this, &ACharacterController::Interact);
-		EIC->BindAction(DropAction, ETriggerEvent::Started, this, &ACharacterController::DropPressed);
+		//EIC->BindAction(DropAction, ETriggerEvent::Started, this, &ACharacterController::DropPressed);
 	}
 }
 
@@ -179,8 +168,6 @@ void ACharacterController::Move(const FInputActionValue& Value)
 	Forward.Normalize();
 	Right.Normalize();
 
-	
-
 	FVector MoveDir = (Forward * Input.Y) + (Right * Input.X);
 	MoveDir.Z = 0.f;
 
@@ -188,7 +175,6 @@ void ACharacterController::Move(const FInputActionValue& Value)
 	{
 		MoveDir.Normalize();
 		FRotator rot = MoveDir.Rotation();
-		
 
 		// Move
 		if (!GetMesh()->GetAnimInstance()->IsAnyMontagePlaying())
@@ -196,11 +182,9 @@ void ACharacterController::Move(const FInputActionValue& Value)
 			if (GetCharacterMovement()->MovementMode != MOVE_None)
 			{
 				DesiredRotation = MoveDir.Rotation();
-			}
-			
+			}			
 			AddMovementInput(MoveDir, 1.f);
-		}
-		
+		}	
 	}
 }
 
@@ -217,7 +201,6 @@ void ACharacterController::CamSwitch()
 
 	CurrentCamIndex = (CurrentCamIndex + 1) % LevelCameras.Num();
 	PC->SetViewTargetWithBlend(LevelCameras[CurrentCamIndex], 0.25f);
-	//PC->SetViewTarget(LevelCameras[CurrentCamIndex]);
 }
 
 void ACharacterController::Interact()
@@ -252,11 +235,8 @@ void ACharacterController::Interact()
 			{
 				UE_LOG(LogTemp, Warning, TEXT("Player in Collider but not facing it enough"));
 			}
-			
 		}
 	}
-	
-
 }
 
 FGameplayTag ACharacterController::GetHeldItemTag() const
@@ -525,25 +505,6 @@ void ACharacterController::HandleRespawn()
 }
 
 
-void ACharacterController::Countdown()
-{
-	if (Seconds != 0)
-	{
-		--Seconds;
-	}
-	else
-	{
-		if (Minutes == 0)
-		{
-
-		}
-		else
-		{
-			--Minutes;
-			Seconds = 59;
-		}
-	}
-}
 
 
 
