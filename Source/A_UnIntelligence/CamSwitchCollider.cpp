@@ -9,7 +9,7 @@
 // Sets default values
 ACamSwitchCollider::ACamSwitchCollider()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	InteractionVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractionVolume"));
 	InteractionVolume->SetupAttachment(RootComponent);
@@ -26,7 +26,7 @@ ACamSwitchCollider::ACamSwitchCollider()
 void ACamSwitchCollider::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Overlap of AutoCamSwitch"));
+	UE_LOG(LogTemp, Warning, TEXT("Overlap of CameraSwitchCollider"));
 	ACharacterController* Char = Cast<ACharacterController>(OtherActor);
 	if (!Char)
 

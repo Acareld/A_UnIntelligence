@@ -11,6 +11,8 @@
 
 class ACameraRegionCollider;
 
+//----------------
+// Not used
 USTRUCT()
 struct FActiveRegion
 {
@@ -19,6 +21,7 @@ struct FActiveRegion
 	UPROPERTY() TObjectPtr<ACameraRegionCollider> Region = nullptr;
 	UPROPERTY() double EnterTime = 0.0;
 };
+//----------------
 
 UCLASS()
 class A_UNINTELLIGENCE_API ACharacterController : public ACharacter, public ICameraRegionListener
@@ -33,36 +36,41 @@ public:
 	virtual void OnCameraRegionExited_Implementation(ACameraRegionCollider* Region) override;
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 	void Move(const FInputActionValue& Value);
-	virtual void PossessedBy(AController* NewController) override;
 	virtual void PawnClientRestart() override;
 	void ApplyInputMapping();
-	void CamSwitch();
 	void Interact();
 	AActor* GetBestInteractable() const;
-	ACameraRegionCollider* ChooseBestRegion() const;
-	void RecomputeAndApplyCamera();
-	void Pickup(AActor* Item);
-	void Drop();
-	void DropPressed();
-	void Countdown();
-
-	UPROPERTY() 
-	TArray<FActiveRegion> ActiveRegions;
 
 	UPROPERTY(EditAnywhere, Category = "Input")
 	TSoftObjectPtr<UInputMappingContext> InputMapping;
 
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* MoveAction;
+	
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* InteractAction;
+
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* CamAction;
 	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* InteractAction;
-	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* DropAction;
+
+	FVector Forward = FVector(1.f, 0.f, 0.f);
+	FVector Right = FVector(0.f, 1.f, 0.f);
+
+	// ----------------------
+	// Not used
+
+	ACameraRegionCollider* ChooseBestRegion() const;
+	void RecomputeAndApplyCamera();
+	void Pickup(AActor* Item);
+	void Drop();
+	void DropPressed();
+	void CamSwitch();
+
+	UPROPERTY()
+	TArray<FActiveRegion> ActiveRegions;
 
 	UPROPERTY(EditAnywhere)
 	UAnimationAsset* RespawnAnim;
@@ -77,54 +85,45 @@ protected:
 	UPROPERTY()
 	TArray<TObjectPtr<class ACameraActor>> LevelCameras;
 
-	FVector Forward = FVector(1.f, 0.f, 0.f);
-	FVector Right = FVector(0.f, 1.f, 0.f);
-
 	UPROPERTY()
 	AActor* HeldItem = nullptr;
 
-
+	// ----------------------------
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
+	void PlayAnimation(UAnimationAsset* Anim);
+	void SetRotation(FRotator Rotation);
+	FTransform GetRespawnTransform() const { return RespawnTransform; }
+
+	// --------------------------
+	// Not used
+	void SetRespawnTransform(const FTransform& NewTransform);
+	FGameplayTag GetHeldItemTag() const;
+	void DeleteHeldItem();
+	void HandleRespawn();
 	int32 GetCurrentCamIndex() const { return CurrentCamIndex; };
 	void SetCurrentCamIndex(int32 NewCamIndex) { CurrentCamIndex = NewCamIndex; };
 	void SetCorrectViewTarget();
 	void AutoCamSwitch();
-
-	void SetRespawnTransform(const FTransform& NewTransform);
-	FTransform GetRespawnTransform() const { return RespawnTransform; }
-	FGameplayTag GetHeldItemTag() const;
-	void DeleteHeldItem();
-
-	void PlayAnimation(UAnimationAsset* Anim);
-	void HandleRespawn();
-	void SetRotation(FRotator Rotation);
-
-	bool bShouldRotate = true;
-
+	// --------------------------
+	
 	UPROPERTY()
 	TSet<TObjectPtr<AActor>> NearbyInteractables;
 
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentInteractable;
+
+	bool bShouldRotate = true;
 private:
-	bool bCamSwitch;
-	
-
-	int32 CurrentCamIndex = 0;
-
 	FRotator DesiredRotation;
 
-	
-
-	
-
-
-
-
+	// -------------------
+	// Not used
+	bool bCamSwitch;
+	int32 CurrentCamIndex = 0;
+	// ------------------
 };

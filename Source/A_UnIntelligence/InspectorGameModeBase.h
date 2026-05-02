@@ -30,8 +30,6 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnRespawnFade();
 
-	virtual void PostLogin(APlayerController* NewPlayer) override;
-
 	FTimerHandle TimerHandle;
 
 	UPROPERTY(BlueprintReadOnly)

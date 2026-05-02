@@ -16,11 +16,11 @@ class A_UNINTELLIGENCE_API UHoverTextWidget : public UUserWidget
 	GENERATED_BODY()
 	
 public:
-    void SetTrapName(const FText& NewName);
+	void SetTrapName(const FText& NewName);
 
 protected:
-    virtual void NativeConstruct() override;
+	virtual void NativeConstruct() override;
 
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* TrapNameText;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* TrapNameText;
 };

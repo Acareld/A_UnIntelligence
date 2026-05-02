@@ -16,5 +16,4 @@ void UHoverTextWidget::SetTrapName(const FText& NewName)
         TrapNameText->SetText(NewName);
 
     }
-    UE_LOG(LogTemp, Warning, TEXT("TrapNameText is %s"), TrapNameText ? TEXT("VALID") : TEXT("NULL"));
 }

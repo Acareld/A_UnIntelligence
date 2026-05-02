@@ -30,7 +30,6 @@ UENUM(BlueprintType)
 enum class EAnimPlayOrder : uint8
 {
     PlayerFirst,
-    TrapFirst,
     Simultaneously
 };
 
@@ -175,7 +174,7 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual EInteractionType GetInteractionType() const override;
 
-    // Deprecated
+    // Not used
     UPROPERTY(EditInstanceOnly, Category = "Trap")
     FGameplayTagContainer AcceptedItems;
 
@@ -197,9 +196,6 @@ protected:
 
     UPROPERTY(VisibleAnywhere)
     TObjectPtr<UBoxComponent> InteractionVolume;
-
-    FVector TopWorldCorners[5];
-
     
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Trap")
     TObjectPtr<UTrapDefinition> TrapDef;
@@ -236,13 +232,6 @@ protected:
     TWeakObjectPtr<APawn> OverlappingPawn;
     TWeakObjectPtr<APawn> AnimInstigatorPawn;
 
-    FTimerHandle UIUpdateTimer;
-
-    bool bUIVisible = true;
-
-    void UpdateHoverUI();
-    void SetHoverUIVisible(bool bVisible);
-
     UFUNCTION()
     void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
@@ -251,8 +240,7 @@ protected:
     void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
-    void CalculateTopWorldCorners();
-
+   
 public:
     virtual void Interact_Implementation(APawn* InstigatorPawn) override;
 
@@ -272,10 +260,12 @@ private:
     FTimerHandle FreezerTimer;
     FTimerHandle FreezerAnimTimer;
     FTimerHandle ActivateTimer;
+    FTimerHandle UIUpdateTimer;
 
     FVector LastViableAnchor;
     FVector TargetWidgetWorldLocation;
     FVector DesiredAnchor;
+    FVector TopWorldCorners[5];
     TArray<FVector> Anchors;
     int32 TargetAnchorIndex;
     int32 CurrentAnchorIndex;
@@ -299,9 +289,11 @@ private:
     bool bOverlap = false;
     bool bIsSwitching = false;
     bool bMoveToInteraction = false;
+    bool bUIVisible = true;
 
-    TWeakObjectPtr<AController> PendingController;
-
+    void CalculateTopWorldCorners();
+    void UpdateHoverUI();
+    void SetHoverUIVisible(bool bVisible);
     void CalculateTextAnchorPoints();
     int32 PickViableTextAnchor(int32 Current, FVector CamLoc);
     void PlayAnimations(APawn* Pawn);

@@ -241,10 +241,6 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 			Char->GetMesh()->PlayAnimation(PlayerAnim, false);
 		}
 	}
-	else if (TrapDef->PlayOrder == EAnimPlayOrder::TrapFirst)
-	{
-
-	}
 	else if (TrapDef->PlayOrder == EAnimPlayOrder::Simultaneously)
 	{
 		if (PlayerAnim)
@@ -254,6 +250,10 @@ void AInteractableTrap::PlayAnimations(APawn* Pawn)
 			Char->GetMesh()->PlayAnimation(PlayerAnim, false);
 			PlayTrapAnimation(false);
 		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Unknown Play Order"));
 	}
 
 
@@ -306,7 +306,6 @@ void AInteractableTrap::PlayTrapAnimation(bool bReverse)
 	{
 		if (bReverse)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Reverse triggered"));
 			TrapSequencePlayer->PlayReverse();
 		}
 		else
@@ -353,10 +352,6 @@ void AInteractableTrap::ActivateOtherActor()
 		{
 			
 			TrapActor->InteractionVolume->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Failed To cast to AInteractableTrap"));
 		}
 
 		// Different Actors To Activate
@@ -492,7 +487,6 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 		NewMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		NewMesh->SetSkeletalMeshAsset(FridgeSkeletalMesh);
 		NewMesh->SetAnimation(FridgeAnimationAsset);
-		//NewMesh->PlayAnimation(FridgeAnimationAsset, false);
 		
 		bIceActive = true;
 
@@ -505,15 +499,6 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 			IceDuration,
 			false
 		);
-
-
-		/*GetWorld()->GetTimerManager().SetTimer(
-			FreezerTimer,
-			this,
-			&AInteractableTrap::RespawnAfterFreezer,
-			FridgeAnimationAsset->GetPlayLength(),
-			false
-		);*/
 		NewMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 	else
@@ -528,6 +513,8 @@ void AInteractableTrap::SpawnFrozenPoseCopy(USkeletalMeshComponent* SourceMesh, 
 		NewMesh->TickAnimation(0.f, false);
 
 		FrozenActor->FinishSpawning(SpawnTransform);
+
+		// It was decided later, that the remaining robot copies should not have collision
 
 		/*const FBoxSphereBounds Bounds = NewMesh->CalcBounds(FTransform::Identity);
 
@@ -591,7 +578,6 @@ bool AInteractableTrap::CanPickup(AActor* ByActor)
 void AInteractableTrap::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Overlap of trap"));
 	ACharacterController* Char = Cast<ACharacterController>(OtherActor);
 	if (!Char)
 
@@ -930,7 +916,6 @@ void AInteractableTrap::CollectAnimData()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No Animation or Sequence for the trap found! Actor: %s"), *TrapDef->DisplayName.ToString());
 		MaxAnimLength = Length;
 		return;
 	}

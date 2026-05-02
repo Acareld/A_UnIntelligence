@@ -34,7 +34,6 @@ void AInspectorGameModeBase::RespawnPlayer(AController* Controller)
 	if (PC)
 	{
 		Spawn = PC->GetRespawnTransform();
-		SavedCamIndex = PC->GetCurrentCamIndex();
 	}
 
 	if (!Spawn.IsValid())
@@ -59,13 +58,6 @@ void AInspectorGameModeBase::RespawnPlayer(AController* Controller)
 	if (!NewPawn) return;
 
 	Controller->Possess(NewPawn);
-
-	if (ACharacterController* NewPC = Cast<ACharacterController>(NewPawn))
-	{
-		NewPC->SetCurrentCamIndex(SavedCamIndex);
-		NewPC->SetCorrectViewTarget();
-		//NewPC->HandleRespawn();
-	}
 
 	HazardsFound++;
 
@@ -133,17 +125,3 @@ void AInspectorGameModeBase::ResumeTimer()
 	GetWorldTimerManager().UnPauseTimer(TimerHandle);
 }
 
-void AInspectorGameModeBase::PostLogin(APlayerController* NewPlayer)
-{
-	Super::PostLogin(NewPlayer);
-
-	if (!NewPlayer) return;
-
-	APawn* Pawn = NewPlayer->GetPawn();
-	if (!Pawn) return;
-
-	if (ACharacterController* Character = Cast<ACharacterController>(Pawn))
-	{
-		//Character->HandleRespawn(); 
-	}
-}
